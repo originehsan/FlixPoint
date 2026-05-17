@@ -100,3 +100,4 @@ ios/Runner/GoogleService-Info.plist
 
 # files  for  secrets
 lib/utils/constants.dart
+context.md
