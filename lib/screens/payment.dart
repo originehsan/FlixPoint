@@ -1,0 +1,556 @@
+﻿import 'dart:math';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:movieticket/models/tmdb_movie.dart';
+import 'package:movieticket/screens/ticketscreen.dart';
+import 'package:movieticket/services/tmdb_service.dart';
+import 'package:movieticket/utils/color.dart';
+import 'package:movieticket/utils/constants.dart';
+import 'package:upi_india/upi_india.dart';
+import 'package:uuid/uuid.dart';
+import 'package:movieticket/utils/responsive.dart';
+
+class PaymentScreen extends StatefulWidget {
+  final TmdbMovie movie;
+  final List<String> seats;
+  final String theatreName;
+  final String date;
+  final String time;
+  final int amount;
+  final String theatreAddress;
+  final String theatreIcon;
+  final String cinemaId;
+  final String timingDocId;
+
+  const PaymentScreen({
+    super.key,
+    required this.movie,
+    required this.amount,
+    required this.seats,
+    required this.date,
+    required this.theatreName,
+    required this.time,
+    required this.theatreAddress,
+    required this.theatreIcon,
+    required this.cinemaId,
+    required this.timingDocId,
+  });
+
+  @override
+  State<PaymentScreen> createState() => _PaymentScreenState();
+}
+
+class _PaymentScreenState extends State<PaymentScreen> {
+  final UpiIndia _upiIndia = UpiIndia();
+  final TmdbService _tmdbService = TmdbService();
+  List<UpiApp>? _apps;
+  bool _isProcessing = false;
+  late String _orderId;
+
+  @override
+  void initState() {
+    super.initState();
+    _orderId = const Uuid().v4().substring(0, 8).toUpperCase();
+    _loadUpiApps();
+  }
+
+  void _loadUpiApps() {
+    _upiIndia.getAllUpiApps(mandatoryTransactionId: false).then((value) {
+      if (mounted) setState(() => _apps = value);
+    }).catchError((err) {
+      if (mounted) setState(() => _apps = []);
+    });
+  }
+
+  Future<void> _initiatePayment(UpiApp app) async {
+    setState(() => _isProcessing = true);
+
+    try {
+      final response = await _upiIndia.startTransaction(
+        app: app,
+        receiverUpiId: upiId,
+        receiverName: upiName,
+        transactionRefId:
+            'FP_${_orderId}_${DateTime.now().millisecondsSinceEpoch}',
+        transactionNote: 'FlixPoint - ${widget.movie.title}',
+        amount: widget.amount.toDouble(),
+      );
+
+      if (!mounted) return;
+
+      if (response.status == UpiPaymentStatus.SUCCESS) {
+        // Validate transaction is unique
+        final isUnique =
+            await _isTransactionUnique(response.transactionId ?? '');
+
+        if (isUnique) {
+          await _confirmBooking(response.transactionId ?? '');
+        } else {
+          _showError('Duplicate transaction detected');
+        }
+      } else if (response.status == UpiPaymentStatus.FAILURE) {
+        _showError('Payment failed. Please try again.');
+      } else {
+        _showError('Payment status unknown. Contact support.');
+      }
+    } catch (e) {
+      if (mounted) _showError('Payment error: ${e.toString()}');
+    }
+
+    if (mounted) setState(() => _isProcessing = false);
+  }
+
+  Future<bool> _isTransactionUnique(String transactionId) async {
+    if (transactionId.isEmpty) return true;
+    try {
+      final query = await FirebaseFirestore.instance
+          .collection(colBookings)
+          .where('transactionId', isEqualTo: transactionId)
+          .get();
+      return query.docs.isEmpty;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  Future<void> _confirmBooking(String transactionId) async {
+    final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final bookingId = const Uuid().v4();
+
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final timingRef = FirebaseFirestore.instance
+            .collection(colTimings)
+            .doc(widget.timingDocId);
+
+        final timingDoc = await transaction.get(timingRef);
+        final currentBooked =
+            List<String>.from(timingDoc.data()?['booked'] ?? []);
+
+        // Check if any seat was already booked
+        for (final seat in widget.seats) {
+          if (currentBooked.contains(seat)) {
+            throw Exception('Seat $seat already booked');
+          }
+        }
+
+        // Move seats from locked to booked
+        final updates = <String, dynamic>{};
+        for (final seat in widget.seats) {
+          currentBooked.add(seat);
+          updates['locked.$seat'] = FieldValue.delete();
+        }
+        updates['booked'] = currentBooked;
+
+        transaction.set(timingRef, updates, SetOptions(merge: true));
+
+        // Create booking document
+        final bookingRef =
+            FirebaseFirestore.instance.collection(colBookings).doc(bookingId);
+
+        transaction.set(bookingRef, {
+          'bookingId': bookingId,
+          'userId': userId,
+          'movieId': widget.movie.id,
+          'movieName': widget.movie.title,
+          'moviePoster': _tmdbService.getPosterUrl(widget.movie.posterPath),
+          'cinemaId': widget.cinemaId,
+          'cinemaName': widget.theatreName,
+          'cinemaAddress': widget.theatreAddress,
+          'seats': widget.seats,
+          'amount': widget.amount,
+          'date': widget.date,
+          'time': widget.time,
+          'status': 'confirmed',
+          'orderId': _orderId,
+          'transactionId': transactionId,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      });
+
+      if (!mounted) return;
+
+      // Navigate to ticket screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => TicketScreen(
+            bookingId: bookingId,
+            movie: widget.movie,
+            seats: widget.seats,
+            theatreName: widget.theatreName,
+            theatreAddress: widget.theatreAddress,
+            theatreIcon: widget.theatreIcon,
+            date: widget.date,
+            time: widget.time,
+            amount: widget.amount,
+            orderId: _orderId,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) _showError('Booking failed: ${e.toString()}');
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: errorColor,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    R.init(context);
+    R.init(context);
+    R.init(context);
+    R.init(context);
+    return Scaffold(
+      backgroundColor: mobileBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: mobileBackgroundColor,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: appthemecolor),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Payment',
+          style: TextStyle(
+            color: primaryColor,
+            fontSize: 18.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: _isProcessing
+          ? _buildProcessing()
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildMovieCard(),
+                  const SizedBox(height: 16),
+                  _buildOrderDetails(),
+                  const SizedBox(height: 16),
+                  _buildTotalSection(),
+                  const SizedBox(height: 20),
+                  _buildPaymentMethods(),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildProcessing() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(color: appthemecolor),
+          const SizedBox(height: 20),
+          Text(
+            'Processing payment...',
+            style: TextStyle(
+              color: primaryColor,
+              fontSize: 16.sp,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Please do not close the app',
+            style: TextStyle(
+              color: secondaryColor,
+              fontSize: 13.sp,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMovieCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: appthemecolor.withValues(alpha: 0.2),
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              bottomLeft: Radius.circular(16),
+            ),
+            child: CachedNetworkImage(
+              imageUrl: _tmdbService.getPosterUrl(widget.movie.posterPath),
+              width: 90.w,
+              height: 130.h,
+              fit: BoxFit.cover,
+              errorWidget: (context, url, error) => Container(
+                width: 90.w,
+                height: 130.h,
+                color: surfaceColor2,
+                child: const Icon(Icons.movie, color: appthemecolor),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.movie.title,
+                    style: TextStyle(
+                      color: appthemecolor,
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  _detailRow(Icons.location_on, widget.theatreName),
+                  const SizedBox(height: 4),
+                  _detailRow(
+                    Icons.calendar_today,
+                    widget.date,
+                  ),
+                  const SizedBox(height: 4),
+                  _detailRow(Icons.access_time, widget.time),
+                  const SizedBox(height: 4),
+                  _detailRow(
+                    Icons.event_seat,
+                    widget.seats.join(', '),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms);
+  }
+
+  Widget _detailRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, color: appthemecolor, size: 14),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: secondaryColor,
+              fontSize: 11.sp,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOrderDetails() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: appthemecolor.withValues(alpha: 0.15),
+          width: 0.5,
+        ),
+      ),
+      child: Column(
+        children: [
+          _orderRow('Order ID', '#$_orderId'),
+          const Divider(color: Color(0xFF2A2A2A), height: 20),
+          _orderRow(
+            'Seats',
+            widget.seats.join(', '),
+          ),
+          const Divider(color: Color(0xFF2A2A2A), height: 20),
+          _orderRow(
+            'Tickets',
+            '${widget.seats.length} ticket${widget.seats.length > 1 ? 's' : ''}',
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 200.ms, duration: 400.ms);
+  }
+
+  Widget _orderRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: secondaryColor,
+            fontSize: 13.sp,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: primaryColor,
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTotalSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: appthemecolor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: appthemecolor.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Total Amount',
+            style: TextStyle(
+              color: primaryColor,
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            'â‚¹${widget.amount}',
+            style: TextStyle(
+              color: appthemecolor,
+              fontSize: 24.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 300.ms, duration: 400.ms);
+  }
+
+  Widget _buildPaymentMethods() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Pay via UPI',
+          style: TextStyle(
+            color: primaryColor,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: appthemecolor.withValues(alpha: 0.15),
+              width: 0.5,
+            ),
+          ),
+          child: _buildUpiApps(),
+        ),
+      ],
+    ).animate().fadeIn(delay: 400.ms, duration: 400.ms);
+  }
+
+  Widget _buildUpiApps() {
+    if (_apps == null) {
+      return const Center(
+        child: CircularProgressIndicator(color: appthemecolor),
+      );
+    }
+    if (_apps!.isEmpty) {
+      return Center(
+        child: Column(
+          children: [
+            const Icon(Icons.payment, color: appthemecolor, size: 40),
+            const SizedBox(height: 8),
+            Text(
+              'No UPI apps found',
+              style: TextStyle(
+                color: secondaryColor,
+                fontSize: 14.sp,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: _apps!.map((app) {
+        return GestureDetector(
+          onTap: () => _initiatePayment(app),
+          child: Container(
+            width: 80.w,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: surfaceColor2,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: appthemecolor.withValues(alpha: 0.2),
+                width: 0.5,
+              ),
+            ),
+            child: Column(
+              children: [
+                Image.memory(
+                  app.icon,
+                  height: 40,
+                  width: 40,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  app.name,
+                  style: TextStyle(
+                    color: primaryColor,
+                    fontSize: 10.sp,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+
+
+
