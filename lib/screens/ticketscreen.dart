@@ -2,10 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:movieticket/models/tmdb_movie.dart';
 import 'package:movieticket/services/tmdb_service.dart';
 import 'package:movieticket/utils/color.dart';
+import 'package:movieticket/utils/responsive.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -52,9 +52,8 @@ class _TicketScreenState extends State<TicketScreen> {
   void initState() {
     super.initState();
     _confettiController = ConfettiController(
-      duration: const Duration(seconds: 3),
+      duration: const Duration(seconds: 4),
     );
-    // Start confetti after slight delay
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) _confettiController.play();
     });
@@ -75,9 +74,12 @@ class _TicketScreenState extends State<TicketScreen> {
           pageFormat: PdfPageFormat.a4,
           build: (pw.Context context) {
             return pw.Container(
-              padding: const pw.EdgeInsets.all(20),
+              padding: const pw.EdgeInsets.all(24),
               decoration: pw.BoxDecoration(
-                border: pw.Border.all(color: PdfColors.amber),
+                border: pw.Border.all(
+                  color: PdfColors.amber,
+                  width: 2,
+                ),
                 borderRadius: const pw.BorderRadius.all(
                   pw.Radius.circular(12),
                 ),
@@ -85,32 +87,63 @@ class _TicketScreenState extends State<TicketScreen> {
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
-                  pw.Text(
-                    'FlixPoint',
-                    style: pw.TextStyle(
-                      fontSize: 28,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.amber,
-                    ),
-                  ),
-                  pw.SizedBox(height: 4),
-                  pw.Text(
-                    'Movie Ticket',
-                    style: pw.TextStyle(
-                      fontSize: 14,
-                      color: PdfColors.grey,
-                    ),
+                  pw.Row(
+                    mainAxisAlignment:
+                        pw.MainAxisAlignment.spaceBetween,
+                    children: [
+                      pw.Column(
+                        crossAxisAlignment:
+                            pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'FlixPoint',
+                            style: pw.TextStyle(
+                              fontSize: 32,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.amber,
+                            ),
+                          ),
+                          pw.Text(
+                            'Movie Ticket',
+                            style: pw.TextStyle(
+                              fontSize: 14,
+                              color: PdfColors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: pw.BoxDecoration(
+                          color: PdfColors.amber,
+                          borderRadius: const pw.BorderRadius.all(
+                            pw.Radius.circular(6),
+                          ),
+                        ),
+                        child: pw.Text(
+                          'CONFIRMED',
+                          style: pw.TextStyle(
+                            fontSize: 12,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.black,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   pw.Divider(color: PdfColors.amber),
                   pw.SizedBox(height: 10),
                   pw.Text(
                     widget.movie.title,
                     style: pw.TextStyle(
-                      fontSize: 22,
+                      fontSize: 24,
                       fontWeight: pw.FontWeight.bold,
                     ),
                   ),
-                  pw.SizedBox(height: 16),
+                  pw.SizedBox(height: 20),
                   _pdfRow('Order ID', '#${widget.orderId}'),
                   _pdfRow('Cinema', widget.theatreName),
                   _pdfRow('Address', widget.theatreAddress),
@@ -123,7 +156,8 @@ class _TicketScreenState extends State<TicketScreen> {
                   ),
                   pw.Divider(color: PdfColors.amber),
                   pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment:
+                        pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text(
                         'Total Amount',
@@ -133,22 +167,22 @@ class _TicketScreenState extends State<TicketScreen> {
                         ),
                       ),
                       pw.Text(
-                        '₹${widget.amount}',
+                        '\u20B9${widget.amount}',
                         style: pw.TextStyle(
-                          fontSize: 20,
+                          fontSize: 22,
                           fontWeight: pw.FontWeight.bold,
                           color: PdfColors.amber,
                         ),
                       ),
                     ],
                   ),
-                  pw.SizedBox(height: 20),
+                  pw.SizedBox(height: 24),
                   pw.Center(
                     child: pw.BarcodeWidget(
                       barcode: pw.Barcode.qrCode(),
                       data: widget.bookingId,
-                      width: 120,
-                      height: 120,
+                      width: 140,
+                      height: 140,
                     ),
                   ),
                   pw.SizedBox(height: 8),
@@ -158,6 +192,17 @@ class _TicketScreenState extends State<TicketScreen> {
                       style: pw.TextStyle(
                         fontSize: 10,
                         color: PdfColors.grey,
+                      ),
+                    ),
+                  ),
+                  pw.SizedBox(height: 20),
+                  pw.Center(
+                    child: pw.Text(
+                      'Thank you for choosing FlixPoint!',
+                      style: pw.TextStyle(
+                        fontSize: 12,
+                        color: PdfColors.amber,
+                        fontStyle: pw.FontStyle.italic,
                       ),
                     ),
                   ),
@@ -173,7 +218,6 @@ class _TicketScreenState extends State<TicketScreen> {
         '${dir.path}/FlixPoint_${widget.orderId}.pdf',
       );
       await file.writeAsBytes(await pdf.save());
-
       await Share.shareXFiles(
         [XFile(file.path)],
         text: 'My FlixPoint ticket for ${widget.movie.title}',
@@ -193,7 +237,7 @@ class _TicketScreenState extends State<TicketScreen> {
 
   pw.Widget _pdfRow(String label, String value) {
     return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(vertical: 4),
+      padding: const pw.EdgeInsets.symmetric(vertical: 5),
       child: pw.Row(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
@@ -223,32 +267,54 @@ class _TicketScreenState extends State<TicketScreen> {
 
   @override
   Widget build(BuildContext context) {
+    R.init(context);
     return Scaffold(
       backgroundColor: mobileBackgroundColor,
       appBar: AppBar(
         backgroundColor: mobileBackgroundColor,
+        elevation: 0,
         automaticallyImplyLeading: false,
-        title: Text(
-          'Booking Confirmed',
-          style: TextStyle(
-            color: appthemecolor,
-            fontSize: 18.sp,
-            fontWeight: FontWeight.w700,
+        title: ShaderMask(
+          shaderCallback: (bounds) => const LinearGradient(
+            colors: [appthemecolor, goldLight],
+          ).createShader(bounds),
+          child: Text(
+            'Booking Confirmed',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: R.sp(18),
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
           ),
         ),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.home, color: appthemecolor),
-            onPressed: () {
+          GestureDetector(
+            onTap: () {
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
+            child: Container(
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: surfaceColor,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: appthemecolor.withValues(alpha: 0.3),
+                ),
+              ),
+              child: const Icon(
+                Icons.home,
+                color: appthemecolor,
+                size: 18,
+              ),
+            ),
           ),
         ],
       ),
       body: Stack(
         children: [
-          // Confetti
           Align(
             alignment: Alignment.topCenter,
             child: ConfettiWidget(
@@ -260,32 +326,29 @@ class _TicketScreenState extends State<TicketScreen> {
                 Colors.white,
                 goldDark,
               ],
-              numberOfParticles: 30,
-              gravity: 0.3,
+              numberOfParticles: R.isPhone ? 25 : 40,
+              gravity: 0.25,
+              emissionFrequency: 0.05,
             ),
           ),
-
-          // Main content
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Success icon
-                _buildSuccessHeader(),
-                const SizedBox(height: 20),
-
-                // Ticket card
-                _buildTicketCard(),
-                const SizedBox(height: 20),
-
-                // Download button
-                _buildDownloadButton(),
-                const SizedBox(height: 12),
-
-                // Home button
-                _buildHomeButton(),
-                const SizedBox(height: 30),
-              ],
+          Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: R.maxWidth),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(R.horizontalPadding),
+                child: Column(
+                  children: [
+                    _buildSuccessHeader(),
+                    const SizedBox(height: 24),
+                    _buildTicketCard(),
+                    const SizedBox(height: 20),
+                    _buildDownloadButton(),
+                    const SizedBox(height: 12),
+                    _buildHomeButton(),
+                    const SizedBox(height: 30),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -297,40 +360,51 @@ class _TicketScreenState extends State<TicketScreen> {
     return Column(
       children: [
         Container(
-          width: 80,
-          height: 80,
+          width: R.isPhone ? 80 : 100,
+          height: R.isPhone ? 80 : 100,
           decoration: BoxDecoration(
             color: successColor.withValues(alpha: 0.15),
             shape: BoxShape.circle,
-            border: Border.all(color: successColor, width: 2),
+            border: Border.all(
+              color: successColor,
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: successColor.withValues(alpha: 0.3),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
+            ],
           ),
-          child: const Icon(
-            Icons.check,
+          child: Icon(
+            Icons.check_rounded,
             color: successColor,
-            size: 40,
+            size: R.isPhone ? 40 : 50,
           ),
         )
             .animate()
             .scale(
-              duration: 500.ms,
+              duration: 600.ms,
               curve: Curves.elasticOut,
             )
             .fadeIn(),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Text(
           'Booking Confirmed!',
           style: TextStyle(
             color: primaryColor,
-            fontSize: 22.sp,
-            fontWeight: FontWeight.w700,
+            fontSize: R.sp(24),
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
           ),
-        ).animate().fadeIn(delay: 300.ms),
-        const SizedBox(height: 4),
+        ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
+        const SizedBox(height: 6),
         Text(
-          'Your ticket is ready',
+          'Your ticket is ready to use',
           style: TextStyle(
             color: secondaryColor,
-            fontSize: 13.sp,
+            fontSize: R.sp(14),
           ),
         ).animate().fadeIn(delay: 400.ms),
       ],
@@ -346,10 +420,16 @@ class _TicketScreenState extends State<TicketScreen> {
           color: appthemecolor.withValues(alpha: 0.4),
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: appthemecolor.withValues(alpha: 0.1),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ],
       ),
       child: Column(
         children: [
-          // Movie poster section
           ClipRRect(
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(20),
@@ -361,10 +441,10 @@ class _TicketScreenState extends State<TicketScreen> {
                   imageUrl: _tmdbService
                       .getBackdropUrl(widget.movie.backdropPath),
                   width: double.infinity,
-                  height: 160.h,
+                  height: R.isPhone ? 160 : 200,
                   fit: BoxFit.cover,
                   errorWidget: (context, url, error) => Container(
-                    height: 160.h,
+                    height: R.isPhone ? 160 : 200,
                     color: surfaceColor2,
                     child: const Icon(
                       Icons.movie,
@@ -374,33 +454,71 @@ class _TicketScreenState extends State<TicketScreen> {
                   ),
                 ),
                 Container(
-                  height: 160.h,
+                  height: R.isPhone ? 160 : 200,
                   decoration: const BoxDecoration(
                     gradient: heroGradient,
                   ),
                 ),
                 Positioned(
+                  top: 12,
+                  right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: successColor,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.check_circle,
+                          color: Colors.white,
+                          size: 12,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Confirmed',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: R.sp(10),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
                   bottom: 12,
                   left: 16,
+                  right: 16,
                   child: Text(
                     widget.movie.title,
                     style: TextStyle(
                       color: primaryColor,
-                      fontSize: 18.sp,
-                      fontWeight: FontWeight.w700,
+                      fontSize: R.sp(20),
+                      fontWeight: FontWeight.w800,
+                      shadows: const [
+                        Shadow(
+                          color: Colors.black,
+                          blurRadius: 10,
+                        ),
+                      ],
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ),
-
-          // Dashed divider
           _buildDashedDivider(),
-
-          // Ticket details
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(R.px(16)),
             child: Column(
               children: [
                 Row(
@@ -454,7 +572,7 @@ class _TicketScreenState extends State<TicketScreen> {
                       child: _ticketDetail(
                         Icons.payment,
                         'Amount',
-                        '₹${widget.amount}',
+                        '\u20B9${widget.amount}',
                       ),
                     ),
                   ],
@@ -462,37 +580,41 @@ class _TicketScreenState extends State<TicketScreen> {
               ],
             ),
           ),
-
-          // Dashed divider
           _buildDashedDivider(),
-
-          // QR Code
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(R.px(16)),
             child: Column(
               children: [
                 Text(
-                  'Scan at Cinema',
+                  'Scan QR at Cinema Entry',
                   style: TextStyle(
                     color: secondaryColor,
-                    fontSize: 12.sp,
+                    fontSize: R.sp(12),
+                    letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: appthemecolor,
-                      width: 2,
+                      width: 2.5,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: appthemecolor.withValues(alpha: 0.3),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
                   child: QrImageView(
                     data: widget.bookingId,
                     version: QrVersions.auto,
-                    size: 140,
+                    size: R.isPhone ? 140 : 180,
                     backgroundColor: Colors.white,
                     eyeStyle: const QrEyeStyle(
                       eyeShape: QrEyeShape.square,
@@ -504,13 +626,14 @@ class _TicketScreenState extends State<TicketScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Text(
                   widget.bookingId,
                   style: TextStyle(
-                    color: secondaryColor,
-                    fontSize: 10.sp,
-                    letterSpacing: 1,
+                    color: hintColor,
+                    fontSize: R.sp(10),
+                    letterSpacing: 2,
+                    fontFamily: 'monospace',
                   ),
                 ),
               ],
@@ -522,7 +645,7 @@ class _TicketScreenState extends State<TicketScreen> {
         .animate()
         .slideY(
           begin: 0.3,
-          duration: 500.ms,
+          duration: 600.ms,
           curve: Curves.easeOut,
         )
         .fadeIn(delay: 200.ms);
@@ -534,13 +657,13 @@ class _TicketScreenState extends State<TicketScreen> {
       children: [
         Row(
           children: [
-            Icon(icon, color: appthemecolor, size: 14),
+            Icon(icon, color: appthemecolor, size: R.sp(12)),
             const SizedBox(width: 4),
             Text(
               label,
               style: TextStyle(
                 color: secondaryColor,
-                fontSize: 10.sp,
+                fontSize: R.sp(10),
               ),
             ),
           ],
@@ -550,8 +673,8 @@ class _TicketScreenState extends State<TicketScreen> {
           value,
           style: TextStyle(
             color: primaryColor,
-            fontSize: 12.sp,
-            fontWeight: FontWeight.w600,
+            fontSize: R.sp(12),
+            fontWeight: FontWeight.w700,
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -565,7 +688,7 @@ class _TicketScreenState extends State<TicketScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: List.generate(
-          30,
+          40,
           (index) => Expanded(
             child: Container(
               height: 1,
@@ -583,37 +706,52 @@ class _TicketScreenState extends State<TicketScreen> {
     return GestureDetector(
       onTap: _isDownloading ? null : _downloadTicket,
       child: Container(
-        height: 55.h,
+        height: 58,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: appthemecolor,
+          gradient: const LinearGradient(
+            colors: [appthemecolor, goldDark],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
           borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: appthemecolor.withValues(alpha: 0.4),
+              blurRadius: 16,
+              spreadRadius: 2,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         alignment: Alignment.center,
         child: _isDownloading
             ? const CircularProgressIndicator(
                 color: Colors.black,
+                strokeWidth: 2,
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(
-                    Icons.download,
+                    Icons.download_rounded,
                     color: Colors.black,
+                    size: 22,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     'Download & Share Ticket',
                     style: TextStyle(
                       color: Colors.black,
-                      fontSize: 16.sp,
-                      fontWeight: FontWeight.w700,
+                      fontSize: R.sp(15),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ],
               ),
       ),
-    ).animate().fadeIn(delay: 600.ms);
+    ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2);
   }
 
   Widget _buildHomeButton() {
@@ -622,14 +760,14 @@ class _TicketScreenState extends State<TicketScreen> {
         Navigator.of(context).popUntil((route) => route.isFirst);
       },
       child: Container(
-        height: 55.h,
+        height: 58,
         width: double.infinity,
         decoration: BoxDecoration(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(30),
           border: Border.all(
             color: appthemecolor,
-            width: 1,
+            width: 1.5,
           ),
         ),
         alignment: Alignment.center,
@@ -637,21 +775,23 @@ class _TicketScreenState extends State<TicketScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(
-              Icons.home,
+              Icons.home_rounded,
               color: appthemecolor,
+              size: 22,
             ),
             const SizedBox(width: 8),
             Text(
               'Back to Home',
               style: TextStyle(
                 color: appthemecolor,
-                fontSize: 16.sp,
-                fontWeight: FontWeight.w600,
+                fontSize: R.sp(15),
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
               ),
             ),
           ],
         ),
       ),
-    ).animate().fadeIn(delay: 700.ms);
+    ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.2);
   }
 }

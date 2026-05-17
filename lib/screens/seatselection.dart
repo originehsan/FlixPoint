@@ -1,8 +1,8 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:movieticket/models/tmdb_movie.dart';
 import 'package:movieticket/screens/payment.dart';
 import 'package:movieticket/utils/color.dart';
@@ -208,9 +208,6 @@ class _SeatSelectionState extends State<SeatSelection> {
   @override
   Widget build(BuildContext context) {
     R.init(context);
-    R.init(context);
-    R.init(context);
-    R.init(context);
     int seatNumber = -1;
     final totalLength =
         _seatLayout[0][0] + _seatLayout[1][0] + _seatLayout[2][0];
@@ -219,9 +216,23 @@ class _SeatSelectionState extends State<SeatSelection> {
       backgroundColor: mobileBackgroundColor,
       appBar: AppBar(
         backgroundColor: mobileBackgroundColor,
-        centerTitle: true,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: appthemecolor),
+          icon: Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: surfaceColor,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: appthemecolor.withValues(alpha: 0.3),
+              ),
+            ),
+            child: Icon(
+              Icons.arrow_back_ios,
+              color: appthemecolor,
+              size: 16,
+            ),
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Column(
@@ -230,7 +241,7 @@ class _SeatSelectionState extends State<SeatSelection> {
               widget.movie.title,
               style: TextStyle(
                 color: primaryColor,
-                fontSize: 14.sp,
+                fontSize: R.sp(15),
                 fontWeight: FontWeight.w700,
               ),
               maxLines: 1,
@@ -239,193 +250,250 @@ class _SeatSelectionState extends State<SeatSelection> {
             Text(
               widget.theatreName,
               style: TextStyle(
-                color: secondaryColor,
-                fontSize: 11.sp,
+                color: appthemecolor,
+                fontSize: R.sp(11),
+                fontWeight: FontWeight.w500,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
+        centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Screen indicator
-            _buildScreenIndicator(),
-            const SizedBox(height: 10),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: R.maxWidth),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                // Screen indicator
+                _buildScreenIndicator(),
+                SizedBox(height: R.hp(2)),
 
-            // Seat grid
-            if (_isLoadingSeats)
-              const Padding(
-                padding: EdgeInsets.all(40),
-                child: CircularProgressIndicator(color: appthemecolor),
-              )
-            else
-              SizedBox(
-                height: (totalLength * 48).h,
-                child: ListView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _seatLayout.length,
-                  itemBuilder: (_, tierIndex) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Column(
-                        children: [
-                          // Tier label
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _getTierColor(tierIndex)
-                                  .withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: _getTierColor(tierIndex)
-                                    .withValues(alpha: 0.3),
+                // Seat grid
+                if (_isLoadingSeats)
+                  Padding(
+                    padding: EdgeInsets.all(R.px(40)),
+                    child: CircularProgressIndicator(color: appthemecolor),
+                  )
+                else
+                  SizedBox(
+                    height: (totalLength * 48).h,
+                    child: ListView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _seatLayout.length,
+                      itemBuilder: (_, tierIndex) {
+                        return Padding(
+                          padding: EdgeInsets.only(top: R.px(10)),
+                          child: Column(
+                            children: [
+                              // Tier label
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: R.px(16),
+                                  vertical: R.px(6),
+                                ),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      _getTierColor(tierIndex)
+                                          .withValues(alpha: 0.3),
+                                      _getTierColor(tierIndex)
+                                          .withValues(alpha: 0.1),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: _getTierColor(tierIndex)
+                                        .withValues(alpha: 0.5),
+                                  ),
+                                ),
+                                child: Text(
+                                  _getTierLabel(tierIndex),
+                                  style: TextStyle(
+                                    color: _getTierColor(tierIndex),
+                                    fontSize: R.sp(11),
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: Text(
-                              _getTierLabel(tierIndex),
-                              style: TextStyle(
-                                color: _getTierColor(tierIndex),
-                                fontSize: 11.sp,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          // Seat rows
-                          ...List.generate(_seatLayout[tierIndex][0], (row) {
-                            seatNumber++;
-                            int c = 0;
-                            return Wrap(
-                              alignment: WrapAlignment.center,
-                              children: List.generate(_seatLayout[tierIndex][1],
-                                  (col) {
-                                // Middle gap
-                                if (col == _seatLayout[tierIndex][1] ~/ 2 &&
-                                    c == 0) {
-                                  c++;
-                                  return const Padding(
-                                    padding: EdgeInsets.all(4.0),
-                                    child: SizedBox(
-                                      height: 25,
-                                      width: 25,
+                              SizedBox(height: R.px(8)),
+                              // Seat rows
+                              ...List.generate(
+                                _seatLayout[tierIndex][0],
+                                (row) {
+                                  seatNumber++;
+                                  int c = 0;
+                                  return Wrap(
+                                    alignment: WrapAlignment.center,
+                                    children: List.generate(
+                                      _seatLayout[tierIndex][1],
+                                      (col) {
+                                        // Middle gap
+                                        if (col ==
+                                                _seatLayout[tierIndex][1] ~/
+                                                    2 &&
+                                            c == 0) {
+                                          c++;
+                                          return Padding(
+                                            padding: EdgeInsets.all(R.px(4)),
+                                            child: SizedBox(
+                                              height: R.seatSize,
+                                              width: R.seatSize,
+                                            ),
+                                          );
+                                        }
+                                        final seatName =
+                                            '${String.fromCharCode(65 + seatNumber)}${col + 1 - c}';
+                                        final isBooked =
+                                            _booked.contains(seatName);
+                                        final isLocked =
+                                            _locked.containsKey(seatName);
+                                        final isSelected =
+                                            _selected.contains(seatName);
+
+                                        return Padding(
+                                          padding: EdgeInsets.all(R.px(4)),
+                                          child: GestureDetector(
+                                            onTap: () async {
+                                              if (isBooked || isLocked) return;
+                                              if (isSelected) {
+                                                _selected.remove(seatName);
+                                                await _unlockSeat(seatName);
+                                              } else {
+                                                _selected.add(seatName);
+                                                await _lockSeat(seatName);
+                                              }
+                                              setState(() {});
+                                            },
+                                            child: AnimatedContainer(
+                                              duration: Duration(
+                                                milliseconds: 200,
+                                              ),
+                                              width: R.seatSize,
+                                              height: R.seatSize,
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                                color: isBooked
+                                                    ? const Color(0xFF1A1A1A)
+                                                    : isLocked
+                                                        ? const Color(
+                                                            0xFF555555)
+                                                        : isSelected
+                                                            ? appthemecolor
+                                                            : _getSeatTierColor(
+                                                                tierIndex),
+                                                border: Border.all(
+                                                  color: isSelected
+                                                      ? appthemecolor
+                                                      : isBooked
+                                                          ? Colors.transparent
+                                                          : _getSeatTierColor(
+                                                                  tierIndex)
+                                                              .withValues(
+                                                              alpha: 0.3,
+                                                            ),
+                                                  width: isSelected ? 1.5 : 0.5,
+                                                ),
+                                                boxShadow: isSelected
+                                                    ? [
+                                                        BoxShadow(
+                                                          color: appthemecolor
+                                                              .withValues(
+                                                            alpha: 0.4,
+                                                          ),
+                                                          blurRadius: 8,
+                                                          spreadRadius: 1,
+                                                        ),
+                                                      ]
+                                                    : null,
+                                              ),
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                seatName,
+                                                style: TextStyle(
+                                                  color: isBooked
+                                                      ? const Color(0xFF333333)
+                                                      : isSelected
+                                                          ? mobileBackgroundColor
+                                                          : Colors.white
+                                                              .withValues(
+                                                              alpha: 0.6,
+                                                            ),
+                                                  fontSize: R.seatFontSize,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                              .animate(
+                                                target: isSelected ? 1 : 0,
+                                              )
+                                              .scale(
+                                                begin: const Offset(1, 1),
+                                                end: const Offset(1.1, 1.1),
+                                                duration: 150.ms,
+                                              ),
+                                        );
+                                      },
                                     ),
                                   );
-                                }
-                                final seatName =
-                                    '${String.fromCharCode(65 + seatNumber)}${col + 1 - c}';
-                                final isBooked = _booked.contains(seatName);
-                                final isLocked = _locked.containsKey(seatName);
-                                final isSelected = _selected.contains(seatName);
-
-                                return Padding(
-                                  padding: const EdgeInsets.all(4.0),
-                                  child: GestureDetector(
-                                    onTap: () async {
-                                      if (isBooked || isLocked) return;
-                                      if (isSelected) {
-                                        _selected.remove(seatName);
-                                        await _unlockSeat(seatName);
-                                      } else {
-                                        _selected.add(seatName);
-                                        await _lockSeat(seatName);
-                                      }
-                                      setState(() {});
-                                    },
-                                    child: AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 200),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(4),
-                                        color: isBooked
-                                            ? seatBooked
-                                            : isLocked
-                                                ? seatLocked
-                                                : isSelected
-                                                    ? appthemecolor
-                                                    : seatAvailable,
-                                        border: isSelected
-                                            ? Border.all(
-                                                color: appthemecolor,
-                                                width: 1.5,
-                                              )
-                                            : null,
-                                      ),
-                                      height: 25,
-                                      width: 25,
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        seatName,
-                                        style: TextStyle(
-                                          color: isBooked
-                                              ? secondaryColor
-                                              : isSelected
-                                                  ? mobileBackgroundColor
-                                                  : secondaryColor,
-                                          fontSize: 7.sp,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  )
-                                      .animate(
-                                        target: isSelected ? 1 : 0,
-                                      )
-                                      .scale(
-                                        begin: const Offset(1, 1),
-                                        end: const Offset(1.1, 1.1),
-                                        duration: 150.ms,
-                                      ),
-                                );
-                              }),
-                            );
-                          }),
-                          const Divider(
-                            color: Color(0xFF2A2A2A),
-                            indent: 30,
-                            endIndent: 30,
+                                },
+                              ),
+                              Divider(
+                                color: Color(0xFF2A2A2A),
+                                indent: R.px(30),
+                                endIndent: R.px(30),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
+                        );
+                      },
+                    ),
+                  ),
 
-            // Seat legend
-            _buildLegend(),
-            const SizedBox(height: 16),
+                // Seat legend
+                _buildLegend(),
+                SizedBox(height: R.hp(2)),
 
-            // Date and time selection
-            _buildDateTimeSection(),
-            const SizedBox(height: 16),
+                // Date and time selection
+                _buildDateSelector(),
+                SizedBox(height: R.hp(1.5)),
+                _buildTimeSelector(),
+                SizedBox(height: R.hp(2)),
 
-            // Price and book button
-            if (_selected.isNotEmpty) _buildPriceSection(),
-            const SizedBox(height: 20),
-          ],
+                // Price and book button
+                if (_selected.isNotEmpty) _buildPriceSection(),
+                SizedBox(height: R.hp(3)),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
   Widget _buildScreenIndicator() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: R.horizontalPadding,
+        vertical: 12,
+      ),
       child: Column(
         children: [
-          const Text(
-            'All eyes this way please',
+          Text(
+            'ALL EYES THIS WAY',
             style: TextStyle(
               color: secondaryColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
+              fontSize: R.sp(11),
+              letterSpacing: 3,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 12),
           Stack(
             alignment: Alignment.topCenter,
             children: [
@@ -433,11 +501,11 @@ class _SeatSelectionState extends State<SeatSelection> {
                 clipper: ScreenClipper(),
                 child: Container(
                   width: double.infinity,
-                  height: 60,
+                  height: 50,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        appthemecolor.withValues(alpha: 0.3),
+                        appthemecolor.withValues(alpha: 0.4),
                         Colors.transparent,
                       ],
                       begin: Alignment.topCenter,
@@ -447,28 +515,29 @@ class _SeatSelectionState extends State<SeatSelection> {
                 ),
               ),
               Container(
-                width: MediaQuery.of(context).size.width * 0.8,
+                width: R.wp(75),
                 height: 2,
                 decoration: BoxDecoration(
                   color: appthemecolor,
                   boxShadow: [
                     BoxShadow(
-                      color: appthemecolor.withValues(alpha: 0.5),
-                      blurRadius: 8,
-                      spreadRadius: 2,
+                      color: appthemecolor.withValues(alpha: 0.6),
+                      blurRadius: 12,
+                      spreadRadius: 3,
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const Text(
+          SizedBox(height: 4),
+          Text(
             'SCREEN',
             style: TextStyle(
               color: appthemecolor,
-              fontSize: 10,
+              fontSize: R.sp(9),
+              letterSpacing: 4,
               fontWeight: FontWeight.w600,
-              letterSpacing: 2,
             ),
           ),
         ],
@@ -477,14 +546,25 @@ class _SeatSelectionState extends State<SeatSelection> {
   }
 
   Widget _buildLegend() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: R.horizontalPadding,
+        vertical: 12,
+      ),
+      padding: EdgeInsets.all(R.px(12)),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: appthemecolor.withValues(alpha: 0.15),
+        ),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _legendItem(seatAvailable, 'Available'),
-          _legendItem(seatBooked, 'Booked'),
-          _legendItem(seatLocked, 'Locked'),
+          _legendItem(const Color(0xFF2A2A2A), 'Available'),
+          _legendItem(const Color(0xFF555555), 'Locked'),
+          _legendItem(const Color(0xFF1A1A1A), 'Booked'),
           _legendItem(appthemecolor, 'Selected'),
         ],
       ),
@@ -493,179 +573,213 @@ class _SeatSelectionState extends State<SeatSelection> {
 
   Widget _legendItem(Color color, String label) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          height: 16,
-          width: 16,
+          width: 14,
+          height: 14,
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(3),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.1),
+            ),
           ),
         ),
-        const SizedBox(width: 4),
+        SizedBox(width: 6),
         Text(
           label,
           style: TextStyle(
             color: secondaryColor,
-            fontSize: 10.sp,
+            fontSize: R.sp(10),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildDateTimeSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
+  Widget _buildDateSelector() {
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: R.horizontalPadding,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
             'Select Date',
             style: TextStyle(
               color: primaryColor,
-              fontSize: 14.sp,
+              fontSize: R.sp(16),
               fontWeight: FontWeight.w700,
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 80.h,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: _dates.length,
-            itemBuilder: (_, index) {
-              final isSelected = _dateIndex == index;
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _dateIndex = index;
-                    _selectedDate = _dates[index]['date'];
-                    _selected = [];
-                  });
-                  _loadBookedSeats();
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  width: 50.w,
-                  decoration: BoxDecoration(
-                    color: isSelected ? appthemecolor : surfaceColor,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isSelected
-                          ? appthemecolor
-                          : appthemecolor.withValues(alpha: 0.2),
+          SizedBox(height: 12),
+          SizedBox(
+            height: 75,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _dates.length,
+              itemBuilder: (_, index) {
+                final isSelected = _dateIndex == index;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _dateIndex = index;
+                      _selectedDate = _dates[index]['date'];
+                      _selected = [];
+                    });
+                    _loadBookedSeats();
+                  },
+                  child: AnimatedContainer(
+                    duration: Duration(milliseconds: 300),
+                    margin: EdgeInsets.only(right: 10),
+                    width: 55,
+                    decoration: BoxDecoration(
+                      color: isSelected ? appthemecolor : surfaceColor,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isSelected
+                            ? appthemecolor
+                            : appthemecolor.withValues(alpha: 0.2),
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: appthemecolor.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _dates[index]['month'],
+                          style: TextStyle(
+                            color: isSelected
+                                ? mobileBackgroundColor
+                                : secondaryColor,
+                            fontSize: R.sp(10),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          _dates[index]['day'],
+                          style: TextStyle(
+                            color: isSelected
+                                ? mobileBackgroundColor
+                                : primaryColor,
+                            fontSize: R.sp(18),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _dates[index]['month'],
-                        style: TextStyle(
-                          color: isSelected
-                              ? mobileBackgroundColor
-                              : secondaryColor,
-                          fontSize: 10.sp,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _dates[index]['day'],
-                        style: TextStyle(
-                          color:
-                              isSelected ? mobileBackgroundColor : primaryColor,
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeSelector() {
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: R.horizontalPadding,
+        vertical: 12,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
             'Select Time',
             style: TextStyle(
               color: primaryColor,
-              fontSize: 14.sp,
+              fontSize: R.sp(16),
               fontWeight: FontWeight.w700,
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 45.h,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            itemCount: _showTimes.length,
-            itemBuilder: (_, index) {
-              final isSelected = _timeIndex == index;
-              return GestureDetector(
-                onTap: () async {
-                  if (_timeIndex != index) {
-                    setState(() {
-                      _timeIndex = index;
-                      _selectedTime = _showTimes[index];
-                      _selected = [];
-                    });
-                    await _loadBookedSeats();
-                  }
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? appthemecolor.withValues(alpha: 0.15)
-                        : surfaceColor,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
+          SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: List.generate(
+              _showTimes.length,
+              (index) {
+                final isSelected = _timeIndex == index;
+                return GestureDetector(
+                  onTap: () async {
+                    if (_timeIndex != index) {
+                      setState(() {
+                        _timeIndex = index;
+                        _selectedTime = _showTimes[index];
+                        _selected = [];
+                      });
+                      await _loadBookedSeats();
+                    }
+                  },
+                  child: AnimatedContainer(
+                    duration: Duration(milliseconds: 300),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
                       color: isSelected
-                          ? appthemecolor
-                          : appthemecolor.withValues(alpha: 0.2),
+                          ? appthemecolor.withValues(alpha: 0.15)
+                          : surfaceColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isSelected
+                            ? appthemecolor
+                            : appthemecolor.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Text(
+                      _showTimes[index],
+                      style: TextStyle(
+                        color: isSelected ? appthemecolor : secondaryColor,
+                        fontSize: R.sp(12),
+                        fontWeight:
+                            isSelected ? FontWeight.w700 : FontWeight.w400,
+                      ),
                     ),
                   ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    _showTimes[index],
-                    style: TextStyle(
-                      color: isSelected ? appthemecolor : secondaryColor,
-                      fontSize: 11.sp,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w400,
-                    ),
-                  ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildPriceSection() {
     final price = _calculatePrice();
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.all(R.horizontalPadding),
+      padding: EdgeInsets.all(R.px(16)),
       decoration: BoxDecoration(
         color: surfaceColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: appthemecolor.withValues(alpha: 0.3),
+          color: appthemecolor.withValues(alpha: 0.4),
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: appthemecolor.withValues(alpha: 0.1),
+            blurRadius: 20,
+            spreadRadius: 2,
+          ),
+        ],
       ),
       child: Column(
         children: [
@@ -676,24 +790,33 @@ class _SeatSelectionState extends State<SeatSelection> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${_selected.length} seat${_selected.length > 1 ? 's' : ''} selected',
+                    '${_selected.length} seat${_selected.length > 1 ? "s" : ""} selected',
                     style: TextStyle(
                       color: secondaryColor,
-                      fontSize: 12.sp,
+                      fontSize: R.sp(12),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'â‚¹ $price',
-                    style: TextStyle(
-                      color: appthemecolor,
-                      fontSize: 24.sp,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ).animate().scale(
-                        duration: 200.ms,
-                        curve: Curves.elasticOut,
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        '\u20B9',
+                        style: TextStyle(
+                          color: appthemecolor,
+                          fontSize: R.sp(16),
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
+                      Text(
+                        ' ${price}',
+                        style: TextStyle(
+                          color: appthemecolor,
+                          fontSize: R.sp(28),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
               GestureDetector(
@@ -718,38 +841,48 @@ class _SeatSelectionState extends State<SeatSelection> {
                   );
                 },
                 child: Container(
-                  height: 50.h,
-                  width: 140.w,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: R.px(24),
+                    vertical: R.px(14),
+                  ),
                   decoration: BoxDecoration(
                     color: appthemecolor,
-                    borderRadius: BorderRadius.circular(25),
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: appthemecolor.withValues(alpha: 0.4),
+                        blurRadius: 12,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
-                  alignment: Alignment.center,
                   child: Text(
                     'Book Now',
                     style: TextStyle(
                       color: mobileBackgroundColor,
-                      fontSize: 15.sp,
+                      fontSize: R.sp(15),
                       fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Row(
+          SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: _selected
                 .map(
                   (seat) => Container(
-                    margin: const EdgeInsets.only(right: 6),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 10,
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
                       color: appthemecolor.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: appthemecolor.withValues(alpha: 0.4),
                       ),
@@ -758,7 +891,7 @@ class _SeatSelectionState extends State<SeatSelection> {
                       seat,
                       style: TextStyle(
                         color: appthemecolor,
-                        fontSize: 11.sp,
+                        fontSize: R.sp(11),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -774,11 +907,24 @@ class _SeatSelectionState extends State<SeatSelection> {
   Color _getTierColor(int tierIndex) {
     switch (tierIndex) {
       case 0:
-        return seatClassic;
+        return const Color(0xFF1E3A8A);
       case 1:
-        return seatPremium as Color;
+        return const Color(0xFF6D28D9);
       case 2:
-        return seatVip;
+        return const Color(0xFF92400E);
+      default:
+        return appthemecolor;
+    }
+  }
+
+  Color _getSeatTierColor(int tierIndex) {
+    switch (tierIndex) {
+      case 0:
+        return const Color(0xFF1E3A8A);
+      case 1:
+        return const Color(0xFF6D28D9);
+      case 2:
+        return const Color(0xFF92400E);
       default:
         return appthemecolor;
     }
@@ -787,11 +933,11 @@ class _SeatSelectionState extends State<SeatSelection> {
   String _getTierLabel(int tierIndex) {
     switch (tierIndex) {
       case 0:
-        return 'Classic â€¢ â‚¹$seatPriceClassic';
+        return 'Classic \u2022 \u20B9$seatPriceClassic';
       case 1:
-        return 'Premium â€¢ â‚¹$seatPricePremium';
+        return 'Premium \u2022 \u20B9$seatPricePremium';
       case 2:
-        return 'VIP â€¢ â‚¹$seatPriceVip';
+        return 'VIP \u2022 \u20B9$seatPriceVip';
       default:
         return '';
     }
@@ -813,7 +959,3 @@ class ScreenClipper extends CustomClipper<Path> {
   @override
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
-
-
-
-

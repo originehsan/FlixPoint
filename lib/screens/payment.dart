@@ -1,18 +1,16 @@
-﻿import 'dart:math';
-import 'package:cached_network_image/cached_network_image.dart';
+﻿import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:movieticket/models/tmdb_movie.dart';
 import 'package:movieticket/screens/ticketscreen.dart';
 import 'package:movieticket/services/tmdb_service.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/constants.dart';
+import 'package:movieticket/utils/responsive.dart';
 import 'package:upi_india/upi_india.dart';
 import 'package:uuid/uuid.dart';
-import 'package:movieticket/utils/responsive.dart';
 
 class PaymentScreen extends StatefulWidget {
   final TmdbMovie movie;
@@ -59,7 +57,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _loadUpiApps() {
-    _upiIndia.getAllUpiApps(mandatoryTransactionId: false).then((value) {
+    _upiIndia
+        .getAllUpiApps(mandatoryTransactionId: false)
+        .then((value) {
       if (mounted) setState(() => _apps = value);
     }).catchError((err) {
       if (mounted) setState(() => _apps = []);
@@ -68,7 +68,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Future<void> _initiatePayment(UpiApp app) async {
     setState(() => _isProcessing = true);
-
     try {
       final response = await _upiIndia.startTransaction(
         app: app,
@@ -79,14 +78,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
         transactionNote: 'FlixPoint - ${widget.movie.title}',
         amount: widget.amount.toDouble(),
       );
-
       if (!mounted) return;
-
       if (response.status == UpiPaymentStatus.SUCCESS) {
-        // Validate transaction is unique
         final isUnique =
             await _isTransactionUnique(response.transactionId ?? '');
-
         if (isUnique) {
           await _confirmBooking(response.transactionId ?? '');
         } else {
@@ -100,7 +95,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     } catch (e) {
       if (mounted) _showError('Payment error: ${e.toString()}');
     }
-
     if (mounted) setState(() => _isProcessing = false);
   }
 
@@ -120,44 +114,37 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Future<void> _confirmBooking(String transactionId) async {
     final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
     final bookingId = const Uuid().v4();
-
     try {
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
+      await FirebaseFirestore.instance
+          .runTransaction((transaction) async {
         final timingRef = FirebaseFirestore.instance
             .collection(colTimings)
             .doc(widget.timingDocId);
-
         final timingDoc = await transaction.get(timingRef);
         final currentBooked =
             List<String>.from(timingDoc.data()?['booked'] ?? []);
-
-        // Check if any seat was already booked
         for (final seat in widget.seats) {
           if (currentBooked.contains(seat)) {
             throw Exception('Seat $seat already booked');
           }
         }
-
-        // Move seats from locked to booked
         final updates = <String, dynamic>{};
         for (final seat in widget.seats) {
           currentBooked.add(seat);
           updates['locked.$seat'] = FieldValue.delete();
         }
         updates['booked'] = currentBooked;
-
         transaction.set(timingRef, updates, SetOptions(merge: true));
-
-        // Create booking document
-        final bookingRef =
-            FirebaseFirestore.instance.collection(colBookings).doc(bookingId);
-
+        final bookingRef = FirebaseFirestore.instance
+            .collection(colBookings)
+            .doc(bookingId);
         transaction.set(bookingRef, {
           'bookingId': bookingId,
           'userId': userId,
           'movieId': widget.movie.id,
           'movieName': widget.movie.title,
-          'moviePoster': _tmdbService.getPosterUrl(widget.movie.posterPath),
+          'moviePoster':
+              _tmdbService.getPosterUrl(widget.movie.posterPath),
           'cinemaId': widget.cinemaId,
           'cinemaName': widget.theatreName,
           'cinemaAddress': widget.theatreAddress,
@@ -171,10 +158,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           'createdAt': FieldValue.serverTimestamp(),
         });
       });
-
       if (!mounted) return;
-
-      // Navigate to ticket screen
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -209,45 +193,64 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   Widget build(BuildContext context) {
     R.init(context);
-    R.init(context);
-    R.init(context);
-    R.init(context);
     return Scaffold(
       backgroundColor: mobileBackgroundColor,
       appBar: AppBar(
         backgroundColor: mobileBackgroundColor,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: appthemecolor),
-          onPressed: () => Navigator.pop(context),
+        elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.all(8),
+          child: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              decoration: BoxDecoration(
+                color: surfaceColor,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: appthemecolor.withValues(alpha: 0.3),
+                ),
+              ),
+              child: const Icon(
+                Icons.arrow_back_ios_new,
+                color: appthemecolor,
+                size: 16,
+              ),
+            ),
+          ),
         ),
         title: Text(
           'Payment',
           style: TextStyle(
             color: primaryColor,
-            fontSize: 18.sp,
+            fontSize: R.sp(18),
             fontWeight: FontWeight.w700,
           ),
         ),
         centerTitle: true,
       ),
-      body: _isProcessing
-          ? _buildProcessing()
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildMovieCard(),
-                  const SizedBox(height: 16),
-                  _buildOrderDetails(),
-                  const SizedBox(height: 16),
-                  _buildTotalSection(),
-                  const SizedBox(height: 20),
-                  _buildPaymentMethods(),
-                  const SizedBox(height: 20),
-                ],
-              ),
-            ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: R.maxWidth),
+          child: _isProcessing
+              ? _buildProcessing()
+              : SingleChildScrollView(
+                  padding: EdgeInsets.all(R.horizontalPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildMovieCard(),
+                      const SizedBox(height: 16),
+                      _buildOrderDetails(),
+                      const SizedBox(height: 16),
+                      _buildTotalSection(),
+                      const SizedBox(height: 20),
+                      _buildPaymentMethods(),
+                      const SizedBox(height: 30),
+                    ],
+                  ),
+                ),
+        ),
+      ),
     );
   }
 
@@ -256,13 +259,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(color: appthemecolor),
-          const SizedBox(height: 20),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: appthemecolor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: appthemecolor.withValues(alpha: 0.3),
+              ),
+            ),
+            child: const CircularProgressIndicator(
+              color: appthemecolor,
+              strokeWidth: 2,
+            ),
+          ),
+          const SizedBox(height: 24),
           Text(
-            'Processing payment...',
+            'Processing Payment...',
             style: TextStyle(
               color: primaryColor,
-              fontSize: 16.sp,
+              fontSize: R.sp(18),
+              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 8),
@@ -270,7 +288,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             'Please do not close the app',
             style: TextStyle(
               color: secondaryColor,
-              fontSize: 13.sp,
+              fontSize: R.sp(13),
             ),
           ),
         ],
@@ -282,27 +300,35 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Container(
       decoration: BoxDecoration(
         color: surfaceColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(R.cardRadius),
         border: Border.all(
           color: appthemecolor.withValues(alpha: 0.2),
           width: 0.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 8,
+            spreadRadius: 1,
+          ),
+        ],
       ),
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16),
-              bottomLeft: Radius.circular(16),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(R.cardRadius),
+              bottomLeft: Radius.circular(R.cardRadius),
             ),
             child: CachedNetworkImage(
-              imageUrl: _tmdbService.getPosterUrl(widget.movie.posterPath),
-              width: 90.w,
-              height: 130.h,
+              imageUrl:
+                  _tmdbService.getPosterUrl(widget.movie.posterPath),
+              width: R.isPhone ? 90 : 110,
+              height: R.isPhone ? 130 : 150,
               fit: BoxFit.cover,
               errorWidget: (context, url, error) => Container(
-                width: 90.w,
-                height: 130.h,
+                width: R.isPhone ? 90 : 110,
+                height: R.isPhone ? 130 : 150,
                 color: surfaceColor2,
                 child: const Icon(Icons.movie, color: appthemecolor),
               ),
@@ -319,22 +345,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     widget.movie.title,
                     style: TextStyle(
                       color: appthemecolor,
-                      fontSize: 16.sp,
+                      fontSize: R.sp(16),
                       fontWeight: FontWeight.w700,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   _detailRow(Icons.location_on, widget.theatreName),
-                  const SizedBox(height: 4),
-                  _detailRow(
-                    Icons.calendar_today,
-                    widget.date,
-                  ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
+                  _detailRow(Icons.calendar_today, widget.date),
+                  const SizedBox(height: 5),
                   _detailRow(Icons.access_time, widget.time),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 5),
                   _detailRow(
                     Icons.event_seat,
                     widget.seats.join(', '),
@@ -352,14 +375,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget _detailRow(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, color: appthemecolor, size: 14),
+        Icon(icon, color: appthemecolor, size: R.sp(14)),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
             text,
             style: TextStyle(
               color: secondaryColor,
-              fontSize: 11.sp,
+              fontSize: R.sp(11),
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -371,10 +394,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Widget _buildOrderDetails() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(R.px(16)),
       decoration: BoxDecoration(
         color: surfaceColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(R.cardRadius),
         border: Border.all(
           color: appthemecolor.withValues(alpha: 0.15),
           width: 0.5,
@@ -383,12 +406,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
       child: Column(
         children: [
           _orderRow('Order ID', '#$_orderId'),
-          const Divider(color: Color(0xFF2A2A2A), height: 20),
-          _orderRow(
-            'Seats',
-            widget.seats.join(', '),
+          Divider(
+            color: appthemecolor.withValues(alpha: 0.1),
+            height: 20,
           ),
-          const Divider(color: Color(0xFF2A2A2A), height: 20),
+          _orderRow('Seats', widget.seats.join(', ')),
+          Divider(
+            color: appthemecolor.withValues(alpha: 0.1),
+            height: 20,
+          ),
           _orderRow(
             'Tickets',
             '${widget.seats.length} ticket${widget.seats.length > 1 ? 's' : ''}',
@@ -406,15 +432,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
           label,
           style: TextStyle(
             color: secondaryColor,
-            fontSize: 13.sp,
+            fontSize: R.sp(13),
           ),
         ),
-        Text(
-          value,
-          style: TextStyle(
-            color: primaryColor,
-            fontSize: 13.sp,
-            fontWeight: FontWeight.w600,
+        Flexible(
+          child: Text(
+            value,
+            style: TextStyle(
+              color: primaryColor,
+              fontSize: R.sp(13),
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.right,
           ),
         ),
       ],
@@ -423,32 +454,68 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Widget _buildTotalSection() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(R.px(16)),
       decoration: BoxDecoration(
-        color: appthemecolor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: appthemecolor.withValues(alpha: 0.3),
+        gradient: LinearGradient(
+          colors: [
+            appthemecolor.withValues(alpha: 0.15),
+            appthemecolor.withValues(alpha: 0.05),
+          ],
         ),
+        borderRadius: BorderRadius.circular(R.cardRadius),
+        border: Border.all(
+          color: appthemecolor.withValues(alpha: 0.4),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: appthemecolor.withValues(alpha: 0.1),
+            blurRadius: 12,
+            spreadRadius: 1,
+          ),
+        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Total Amount',
-            style: TextStyle(
-              color: primaryColor,
-              fontSize: 15.sp,
-              fontWeight: FontWeight.w600,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Total Amount',
+                style: TextStyle(
+                  color: secondaryColor,
+                  fontSize: R.sp(13),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${widget.seats.length} ticket${widget.seats.length > 1 ? 's' : ''}',
+                style: TextStyle(
+                  color: hintColor,
+                  fontSize: R.sp(11),
+                ),
+              ),
+            ],
           ),
-          Text(
-            'â‚¹${widget.amount}',
-            style: TextStyle(
-              color: appthemecolor,
-              fontSize: 24.sp,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              Text(
+                '\u20B9',
+                style: TextStyle(
+                  color: appthemecolor,
+                  fontSize: R.sp(20),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                '${widget.amount}',
+                style: TextStyle(
+                  color: appthemecolor,
+                  fontSize: R.sp(28),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -459,20 +526,33 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Pay via UPI',
-          style: TextStyle(
-            color: primaryColor,
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w700,
-          ),
+        Row(
+          children: [
+            Container(
+              width: 4,
+              height: 20,
+              decoration: BoxDecoration(
+                color: appthemecolor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              'Pay via UPI',
+              style: TextStyle(
+                color: primaryColor,
+                fontSize: R.sp(18),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(R.px(16)),
           decoration: BoxDecoration(
             color: surfaceColor,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(R.cardRadius),
             border: Border.all(
               color: appthemecolor.withValues(alpha: 0.15),
               width: 0.5,
@@ -487,23 +567,49 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget _buildUpiApps() {
     if (_apps == null) {
       return const Center(
-        child: CircularProgressIndicator(color: appthemecolor),
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: CircularProgressIndicator(color: appthemecolor),
+        ),
       );
     }
     if (_apps!.isEmpty) {
       return Center(
-        child: Column(
-          children: [
-            const Icon(Icons.payment, color: appthemecolor, size: 40),
-            const SizedBox(height: 8),
-            Text(
-              'No UPI apps found',
-              style: TextStyle(
-                color: secondaryColor,
-                fontSize: 14.sp,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: appthemecolor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.payment,
+                  color: appthemecolor,
+                  size: 40,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              Text(
+                'No UPI apps found',
+                style: TextStyle(
+                  color: secondaryColor,
+                  fontSize: R.sp(14),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Please install a UPI app like GPay or PhonePe',
+                style: TextStyle(
+                  color: hintColor,
+                  fontSize: R.sp(11),
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -514,8 +620,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
         return GestureDetector(
           onTap: () => _initiatePayment(app),
           child: Container(
-            width: 80.w,
-            padding: const EdgeInsets.all(8),
+            width: R.isPhone ? 75 : 90,
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: surfaceColor2,
               borderRadius: BorderRadius.circular(12),
@@ -528,15 +634,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
               children: [
                 Image.memory(
                   app.icon,
-                  height: 40,
-                  width: 40,
+                  height: 44,
+                  width: 44,
                 ),
                 const SizedBox(height: 6),
                 Text(
                   app.name,
                   style: TextStyle(
                     color: primaryColor,
-                    fontSize: 10.sp,
+                    fontSize: R.sp(10),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -550,7 +656,3 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 }
-
-
-
-

@@ -1,7 +1,6 @@
 ﻿import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/constants.dart';
 import 'package:movieticket/utils/responsive.dart';
@@ -17,36 +16,38 @@ class _EventsScreenState extends State<EventsScreen> {
   int _selectedCategory = 0;
 
   final List<Map<String, dynamic>> _categories = [
-    {'name': 'All', 'icon': Icons.apps},
-    {'name': 'Sports', 'icon': Icons.sports_cricket},
-    {'name': 'Parties', 'icon': Icons.celebration},
-    {'name': 'Concerts', 'icon': Icons.music_note},
-    {'name': 'Comedy', 'icon': Icons.theater_comedy},
+    {'name': 'All', 'icon': Icons.apps_rounded},
+    {'name': 'Sports', 'icon': Icons.sports_cricket_rounded},
+    {'name': 'Parties', 'icon': Icons.celebration_rounded},
+    {'name': 'Concerts', 'icon': Icons.music_note_rounded},
+    {'name': 'Comedy', 'icon': Icons.theater_comedy_rounded},
   ];
 
   @override
   Widget build(BuildContext context) {
     R.init(context);
-    R.init(context);
-    R.init(context);
-    R.init(context);
     return Scaffold(
       backgroundColor: mobileBackgroundColor,
-      body: CustomScrollView(
-        slivers: [
-          _buildAppBar(),
-          SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildCategoryFilter(),
-                _buildFeaturedEvents(),
-                _buildAllEvents(),
-                const SizedBox(height: 30),
-              ],
-            ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: R.maxWidth),
+          child: CustomScrollView(
+            slivers: [
+              _buildAppBar(),
+              SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildCategoryFilter(),
+                    _buildFeaturedEvents(),
+                    _buildAllEvents(),
+                    const SizedBox(height: 30),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -56,13 +57,19 @@ class _EventsScreenState extends State<EventsScreen> {
       backgroundColor: mobileBackgroundColor,
       floating: true,
       snap: true,
-      title: Text(
-        'Live Events',
-        style: TextStyle(
-          color: appthemecolor,
-          fontSize: 20.sp,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 1,
+      elevation: 0,
+      title: ShaderMask(
+        shaderCallback: (bounds) => const LinearGradient(
+          colors: [appthemecolor, goldLight],
+        ).createShader(bounds),
+        child: Text(
+          'Live Events',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: R.sp(20),
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1,
+          ),
         ),
       ),
       centerTitle: true,
@@ -71,10 +78,12 @@ class _EventsScreenState extends State<EventsScreen> {
 
   Widget _buildCategoryFilter() {
     return SizedBox(
-      height: 45.h,
+      height: 48,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: EdgeInsets.symmetric(
+          horizontal: R.horizontalPadding,
+        ),
         itemCount: _categories.length,
         itemBuilder: (context, index) {
           final isSelected = _selectedCategory == index;
@@ -82,33 +91,49 @@ class _EventsScreenState extends State<EventsScreen> {
             onTap: () => setState(() => _selectedCategory = index),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              margin: const EdgeInsets.only(right: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: R.px(14),
+              ),
               decoration: BoxDecoration(
                 color: isSelected ? appthemecolor : surfaceColor,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(24),
                 border: Border.all(
                   color: isSelected
                       ? appthemecolor
                       : appthemecolor.withValues(alpha: 0.2),
                 ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: appthemecolor.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : null,
               ),
               child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     _categories[index]['icon'] as IconData,
-                    size: 14,
-                    color: isSelected ? mobileBackgroundColor : secondaryColor,
+                    size: R.sp(14),
+                    color: isSelected
+                        ? mobileBackgroundColor
+                        : secondaryColor,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     _categories[index]['name'] as String,
                     style: TextStyle(
-                      color:
-                          isSelected ? mobileBackgroundColor : secondaryColor,
-                      fontSize: 12.sp,
-                      fontWeight:
-                          isSelected ? FontWeight.w700 : FontWeight.w400,
+                      color: isSelected
+                          ? mobileBackgroundColor
+                          : secondaryColor,
+                      fontSize: R.sp(12),
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w400,
                     ),
                   ),
                 ],
@@ -120,39 +145,73 @@ class _EventsScreenState extends State<EventsScreen> {
     ).animate().fadeIn(duration: 400.ms);
   }
 
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        R.horizontalPadding, 16,
+        R.horizontalPadding, 10,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 20,
+            decoration: BoxDecoration(
+              color: appthemecolor,
+              borderRadius: BorderRadius.circular(2),
+              boxShadow: [
+                BoxShadow(
+                  color: appthemecolor.withValues(alpha: 0.5),
+                  blurRadius: 6,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            title,
+            style: TextStyle(
+              color: primaryColor,
+              fontSize: R.sp(18),
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFeaturedEvents() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            'Featured Events',
-            style: TextStyle(
-              color: primaryColor,
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
+        _buildSectionTitle('Featured Events'),
         StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance.collection(colEvents).snapshots(),
+          stream: FirebaseFirestore.instance
+              .collection(colEvents)
+              .snapshots(),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+            if (snapshot.connectionState ==
+                ConnectionState.waiting) {
               return _buildShimmer();
             }
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            if (!snapshot.hasData ||
+                snapshot.data!.docs.isEmpty) {
               return _buildEmptyState('No featured events');
             }
             return SizedBox(
-              height: 200.h,
+              height: R.isPhone ? 200 : 250,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: EdgeInsets.symmetric(
+                  horizontal: R.horizontalPadding,
+                ),
                 itemCount: snapshot.data!.docs.length,
                 itemBuilder: (context, index) {
-                  final data =
-                      snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                  final data = snapshot.data!.docs[index].data()
+                      as Map<String, dynamic>;
                   return _buildFeaturedCard(data, index);
                 },
               ),
@@ -163,21 +222,29 @@ class _EventsScreenState extends State<EventsScreen> {
     );
   }
 
-  Widget _buildFeaturedCard(Map<String, dynamic> data, int index) {
+  Widget _buildFeaturedCard(
+      Map<String, dynamic> data, int index) {
     return GestureDetector(
       onTap: () {},
       child: Container(
-        width: 260.w,
-        margin: const EdgeInsets.symmetric(horizontal: 6),
+        width: R.isPhone ? 260 : 320,
+        margin: const EdgeInsets.only(right: 12),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(R.cardRadius),
           border: Border.all(
             color: appthemecolor.withValues(alpha: 0.3),
             width: 0.5,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 8,
+              spreadRadius: 1,
+            ),
+          ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(R.cardRadius),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -185,7 +252,8 @@ class _EventsScreenState extends State<EventsScreen> {
                   ? Image.network(
                       data['logo'],
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
+                      errorBuilder: (context, error, stackTrace) =>
+                          Container(
                         color: surfaceColor,
                         child: const Icon(
                           Icons.event,
@@ -203,28 +271,51 @@ class _EventsScreenState extends State<EventsScreen> {
                       ),
                     ),
               Container(
-                decoration: const BoxDecoration(gradient: heroGradient),
+                decoration: const BoxDecoration(
+                  gradient: heroGradient,
+                ),
               ),
               Positioned(
                 top: 12,
                 left: 12,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
+                    horizontal: 10,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
                     color: appthemecolor,
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: appthemecolor.withValues(alpha: 0.4),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
                   ),
-                  child: Text(
-                    'LIVE',
-                    style: TextStyle(
-                      color: mobileBackgroundColor,
-                      fontSize: 9.sp,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'LIVE',
+                        style: TextStyle(
+                          color: mobileBackgroundColor,
+                          fontSize: R.sp(9),
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -239,30 +330,44 @@ class _EventsScreenState extends State<EventsScreen> {
                       data['logoname'] ?? '',
                       style: TextStyle(
                         color: primaryColor,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w700,
+                        fontSize: R.sp(16),
+                        fontWeight: FontWeight.w800,
+                        shadows: const [
+                          Shadow(
+                            color: Colors.black,
+                            blurRadius: 10,
+                          ),
+                        ],
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         const Spacer(),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 5,
+                            horizontal: 14,
+                            vertical: 6,
                           ),
                           decoration: BoxDecoration(
                             color: appthemecolor,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: appthemecolor
+                                    .withValues(alpha: 0.4),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ],
                           ),
                           child: Text(
                             'Book Now',
                             style: TextStyle(
                               color: mobileBackgroundColor,
-                              fontSize: 10.sp,
+                              fontSize: R.sp(11),
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -275,7 +380,9 @@ class _EventsScreenState extends State<EventsScreen> {
             ],
           ),
         ),
-      ).animate().fadeIn(delay: Duration(milliseconds: index * 100)),
+      ).animate().fadeIn(
+            delay: Duration(milliseconds: index * 100),
+          ),
     );
   }
 
@@ -283,34 +390,30 @@ class _EventsScreenState extends State<EventsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            'All Events',
-            style: TextStyle(
-              color: primaryColor,
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
+        _buildSectionTitle('All Events'),
         StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance.collection(colEvents).snapshots(),
+          stream: FirebaseFirestore.instance
+              .collection(colEvents)
+              .snapshots(),
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
+            if (snapshot.connectionState ==
+                ConnectionState.waiting) {
               return _buildListShimmer();
             }
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            if (!snapshot.hasData ||
+                snapshot.data!.docs.isEmpty) {
               return _buildEmptyState('No events available');
             }
             return ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(
+                horizontal: R.horizontalPadding,
+              ),
               itemCount: snapshot.data!.docs.length,
               itemBuilder: (context, index) {
-                final data =
-                    snapshot.data!.docs[index].data() as Map<String, dynamic>;
+                final data = snapshot.data!.docs[index].data()
+                    as Map<String, dynamic>;
                 return _buildEventCard(data, index);
               },
             );
@@ -327,7 +430,7 @@ class _EventsScreenState extends State<EventsScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: surfaceColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(R.cardRadius),
           border: Border.all(
             color: appthemecolor.withValues(alpha: 0.15),
             width: 0.5,
@@ -336,19 +439,20 @@ class _EventsScreenState extends State<EventsScreen> {
         child: Row(
           children: [
             ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(R.cardRadius),
+                bottomLeft: Radius.circular(R.cardRadius),
               ),
               child: data['logo'] != null
                   ? Image.network(
                       data['logo'],
-                      width: 90.w,
-                      height: 100.h,
+                      width: R.isPhone ? 90 : 110,
+                      height: R.isPhone ? 100 : 120,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        width: 90.w,
-                        height: 100.h,
+                      errorBuilder:
+                          (context, error, stackTrace) => Container(
+                        width: R.isPhone ? 90 : 110,
+                        height: R.isPhone ? 100 : 120,
                         color: surfaceColor2,
                         child: const Icon(
                           Icons.event,
@@ -357,8 +461,8 @@ class _EventsScreenState extends State<EventsScreen> {
                       ),
                     )
                   : Container(
-                      width: 90.w,
-                      height: 100.h,
+                      width: R.isPhone ? 90 : 110,
+                      height: R.isPhone ? 100 : 120,
                       color: surfaceColor2,
                       child: const Icon(
                         Icons.event,
@@ -377,7 +481,7 @@ class _EventsScreenState extends State<EventsScreen> {
                       data['logoname'] ?? 'Event',
                       style: TextStyle(
                         color: primaryColor,
-                        fontSize: 14.sp,
+                        fontSize: R.sp(14),
                         fontWeight: FontWeight.w700,
                       ),
                       maxLines: 1,
@@ -388,7 +492,7 @@ class _EventsScreenState extends State<EventsScreen> {
                       Row(
                         children: [
                           const Icon(
-                            Icons.calendar_today,
+                            Icons.calendar_today_rounded,
                             color: appthemecolor,
                             size: 12,
                           ),
@@ -397,7 +501,7 @@ class _EventsScreenState extends State<EventsScreen> {
                             data['date'].toString(),
                             style: TextStyle(
                               color: secondaryColor,
-                              fontSize: 11.sp,
+                              fontSize: R.sp(11),
                             ),
                           ),
                         ],
@@ -407,7 +511,7 @@ class _EventsScreenState extends State<EventsScreen> {
                       Row(
                         children: [
                           const Icon(
-                            Icons.location_on,
+                            Icons.location_on_rounded,
                             color: appthemecolor,
                             size: 12,
                           ),
@@ -417,7 +521,7 @@ class _EventsScreenState extends State<EventsScreen> {
                               data['venue'].toString(),
                               style: TextStyle(
                                 color: secondaryColor,
-                                fontSize: 11.sp,
+                                fontSize: R.sp(11),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -429,22 +533,27 @@ class _EventsScreenState extends State<EventsScreen> {
                     const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+                        horizontal: 12,
+                        vertical: 5,
                       ),
                       decoration: BoxDecoration(
-                        color: appthemecolor.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
+                        gradient: LinearGradient(
+                          colors: [
+                            appthemecolor.withValues(alpha: 0.2),
+                            appthemecolor.withValues(alpha: 0.05),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: appthemecolor.withValues(alpha: 0.3),
+                          color: appthemecolor.withValues(alpha: 0.4),
                         ),
                       ),
                       child: Text(
                         'Book Now',
                         style: TextStyle(
                           color: appthemecolor,
-                          fontSize: 10.sp,
-                          fontWeight: FontWeight.w600,
+                          fontSize: R.sp(10),
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
@@ -455,23 +564,27 @@ class _EventsScreenState extends State<EventsScreen> {
             const SizedBox(width: 12),
           ],
         ),
-      ).animate().fadeIn(delay: Duration(milliseconds: index * 100)),
+      ).animate().fadeIn(
+            delay: Duration(milliseconds: index * 100),
+          ),
     );
   }
 
   Widget _buildShimmer() {
     return SizedBox(
-      height: 200.h,
+      height: R.isPhone ? 200 : 250,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: EdgeInsets.symmetric(
+          horizontal: R.horizontalPadding,
+        ),
         itemCount: 3,
         itemBuilder: (context, index) => Container(
-          width: 260.w,
-          margin: const EdgeInsets.symmetric(horizontal: 6),
+          width: R.isPhone ? 260 : 320,
+          margin: const EdgeInsets.only(right: 12),
           decoration: BoxDecoration(
             color: surfaceColor,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(R.cardRadius),
           ),
         ),
       ),
@@ -482,14 +595,16 @@ class _EventsScreenState extends State<EventsScreen> {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(
+        horizontal: R.horizontalPadding,
+      ),
       itemCount: 3,
       itemBuilder: (context, index) => Container(
-        height: 100.h,
+        height: R.isPhone ? 100 : 120,
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: surfaceColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(R.cardRadius),
         ),
       ),
     );
@@ -501,17 +616,27 @@ class _EventsScreenState extends State<EventsScreen> {
         padding: const EdgeInsets.all(40),
         child: Column(
           children: [
-            const Icon(
-              Icons.event_busy,
-              color: appthemecolor,
-              size: 50,
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: appthemecolor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: appthemecolor.withValues(alpha: 0.2),
+                ),
+              ),
+              child: const Icon(
+                Icons.event_busy_rounded,
+                color: appthemecolor,
+                size: 40,
+              ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             Text(
               message,
               style: TextStyle(
                 color: secondaryColor,
-                fontSize: 14.sp,
+                fontSize: R.sp(14),
               ),
             ),
           ],
@@ -520,7 +645,3 @@ class _EventsScreenState extends State<EventsScreen> {
     );
   }
 }
-
-
-
-

@@ -1,41 +1,34 @@
 import 'package:flutter/material.dart';
 
 class R {
-  static late MediaQueryData _mq;
-  static late double _w;
-  static late double _h;
+  static double _w = 375;
+  static double _h = 812;
 
   static void init(BuildContext context) {
-    _mq = MediaQuery.of(context);
-    _w = _mq.size.width;
-    _h = _mq.size.height;
+    final mq = MediaQuery.of(context);
+    _w = mq.size.width;
+    _h = mq.size.height;
   }
 
-  // Screen dimensions
-  static double get screenWidth => _w;
-  static double get screenHeight => _h;
+  static double get w => _w;
+  static double get h => _h;
 
-  // Breakpoints
   static bool get isSmallPhone => _w < 360;
   static bool get isPhone => _w < 600;
   static bool get isTablet => _w >= 600 && _w < 900;
   static bool get isDesktop => _w >= 900;
 
-  // Responsive width percentage
   static double wp(double percent) => _w * percent / 100;
-
-  // Responsive height percentage
   static double hp(double percent) => _h * percent / 100;
 
-  // Responsive font size
   static double sp(double size) {
-    if (_w > 900) return size * 1.3;
-    if (_w > 600) return size * 1.15;
-    if (_w < 360) return size * 0.9;
+    if (_w > 1200) return size * 1.4;
+    if (_w > 900) return size * 1.25;
+    if (_w > 600) return size * 1.1;
+    if (_w < 360) return size * 0.85;
     return size;
   }
 
-  // Responsive padding/margin
   static double px(double size) {
     if (_w > 900) return size * 1.5;
     if (_w > 600) return size * 1.2;
@@ -43,7 +36,6 @@ class R {
     return size;
   }
 
-  // Movie card width
   static double get movieCardWidth {
     if (_w > 1200) return 180;
     if (_w > 900) return 160;
@@ -52,7 +44,6 @@ class R {
     return 130;
   }
 
-  // Movie card height (poster)
   static double get movieCardHeight {
     if (_w > 1200) return 260;
     if (_w > 900) return 240;
@@ -61,7 +52,6 @@ class R {
     return 190;
   }
 
-  // Featured banner height
   static double get featuredHeight {
     if (_w > 1200) return 450;
     if (_w > 900) return 380;
@@ -70,7 +60,6 @@ class R {
     return 260;
   }
 
-  // Horizontal section height
   static double get sectionHeight {
     if (_w > 900) return 260;
     if (_w > 600) return 230;
@@ -78,12 +67,10 @@ class R {
     return 200;
   }
 
-  // Coming soon section height
   static double get comingSoonSectionHeight {
-    return movieCardHeight + 80;
+    return movieCardHeight + 90;
   }
 
-  // Search grid columns
   static int get gridColumns {
     if (_w > 1200) return 5;
     if (_w > 900) return 4;
@@ -91,35 +78,50 @@ class R {
     return 2;
   }
 
-  // Max content width for desktop
   static double get maxWidth {
     if (_w > 1400) return 1200;
     if (_w > 1200) return 1000;
     return _w;
   }
 
-  // Horizontal padding
   static double get horizontalPadding {
     if (_w > 900) return 32;
     if (_w > 600) return 24;
     return 16;
   }
 
-  // Border radius
   static double get cardRadius {
     if (_w > 600) return 16;
     return 12;
   }
 
-  // Bottom nav height
-  static double get bottomNavHeight {
-    if (_w > 600) return 70;
-    return 60;
+  static double get seatSize {
+    if (_w > 900) return 40;
+    if (_w > 600) return 32;
+    return 25;
   }
 
-  // Appbar height
-  static double get appBarHeight {
-    if (_w > 600) return 70;
-    return 56;
+  static double get seatFontSize {
+    if (_w > 900) return 10;
+    if (_w > 600) return 9;
+    return 7;
+  }
+
+  static double get castCardWidth {
+    if (_w > 900) return 100;
+    if (_w > 600) return 90;
+    return 80;
+  }
+
+  static double get castCardHeight {
+    if (_w > 900) return 140;
+    if (_w > 600) return 130;
+    return 120;
+  }
+
+  static double get circleAvatarRadius {
+    if (_w > 900) return 40;
+    if (_w > 600) return 35;
+    return 28;
   }
 }

@@ -1,13 +1,14 @@
 import 'dart:async';
-import 'package:movieticket/utils/navbar.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lottie/lottie.dart';
+import 'package:movieticket/provider/user_provider.dart';
 import 'package:movieticket/screens/startscreen.dart';
 import 'package:movieticket/utils/color.dart';
+import 'package:movieticket/utils/navbar.dart';
+import 'package:movieticket/utils/responsive.dart';
+import 'package:provider/provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -17,21 +18,37 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  static const String keyName = "name";
   bool _showImage = false;
-  String _name = "User";
+  String _name = 'User';
 
   @override
   void initState() {
     super.initState();
-    _getName();
+    _initialize();
     Timer(const Duration(seconds: 2), () {
       if (mounted) {
-        setState(() {
-          _showImage = true;
-        });
+        setState(() => _showImage = true);
       }
     });
+  }
+
+  Future<void> _initialize() async {
+    // Initialize user provider
+    final userProvider = Provider.of<UserProvider>(
+      context,
+      listen: false,
+    );
+    await userProvider.initialize();
+
+    if (mounted) {
+      setState(() {
+        _name = userProvider.name.isNotEmpty
+            ? userProvider.name
+            : 'User';
+      });
+    }
+
+    // Navigate after 4 seconds
     Timer(const Duration(seconds: 4), () {
       if (mounted) {
         Navigator.pushReplacement(
@@ -44,38 +61,60 @@ class _SplashScreenState extends State<SplashScreen> {
     });
   }
 
-  void _getName() async {
-    var prefs = await SharedPreferences.getInstance();
-    var savedName = prefs.getString(keyName);
-    if (mounted) {
-      setState(() {
-        _name = savedName ?? "User";
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    R.init(context);
     return Scaffold(
+      backgroundColor: mobileBackgroundColor,
       body: Center(
         child: Stack(
+          alignment: Alignment.center,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 20.0),
-              child: LottieBuilder.asset(
-                "assets/animation.json",
-                height: 300.h,
-              ),
+            LottieBuilder.asset(
+              'assets/animation.json',
+              height: R.isPhone ? 300 : 400,
             ),
             AnimatedPositioned(
               duration: const Duration(seconds: 1),
-              bottom: 0.h,
+              bottom: 0,
               left: 0,
               right: 0,
               child: AnimatedOpacity(
                 duration: const Duration(seconds: 1),
                 opacity: _showImage ? 1 : 0,
-                child: SvgPicture.asset('assets/appicon.svg'),
+                child: Column(
+                  children: [
+                    SvgPicture.asset(
+                      'assets/appicon.svg',
+                      height: R.isPhone ? 40 : 60,
+                    ),
+                    const SizedBox(height: 8),
+                    ShaderMask(
+                      shaderCallback: (bounds) =>
+                          const LinearGradient(
+                        colors: [appthemecolor, goldLight],
+                      ).createShader(bounds),
+                      child: Text(
+                        'FlixPoint',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: R.sp(28),
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 3,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Book. Watch. Enjoy.',
+                      style: TextStyle(
+                        color: secondaryColor,
+                        fontSize: R.sp(13),
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
@@ -93,6 +132,7 @@ class OpeningScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: mobileBackgroundColor,
       body: StreamBuilder(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
@@ -100,12 +140,19 @@ class OpeningScreen extends StatelessWidget {
             if (snapshot.hasData) {
               return Navbar(name: name);
             } else if (snapshot.hasError) {
-              return Center(child: Text('${snapshot.error}'));
+              return Center(
+                child: Text(
+                  '${snapshot.error}',
+                  style: const TextStyle(color: errorColor),
+                ),
+              );
             }
           }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(color: primaryColor),
+              child: CircularProgressIndicator(
+                color: appthemecolor,
+              ),
             );
           }
           return const StartScreen();
