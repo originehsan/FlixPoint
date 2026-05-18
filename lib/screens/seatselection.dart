@@ -8,6 +8,7 @@ import 'package:movieticket/screens/payment.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/constants.dart';
 import 'package:movieticket/utils/responsive.dart';
+import 'package:movieticket/utils/page_transitions.dart';
 import 'package:provider/provider.dart';
 
 class SeatSelection extends StatefulWidget {
@@ -819,8 +820,8 @@ class _SeatSelectionState extends State<SeatSelection> {
 
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => PaymentScreen(
+                    AppRoutes.slideUpRoute(
+                      PaymentScreen(
                         movie: widget.movie,
                         amount: price,
                         seats: _selected,

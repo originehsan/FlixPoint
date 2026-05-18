@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:movieticket/utils/responsive.dart';
 
 class Moviecard extends StatefulWidget {
   final dynamic snap;
@@ -12,6 +12,7 @@ class Moviecard extends StatefulWidget {
 class _MoviecardState extends State<Moviecard> {
   @override
   Widget build(BuildContext context) {
+    R.init(context);
     return Container(
       // color: mobileBackgroundColor,
       child: Column(
@@ -25,8 +26,8 @@ class _MoviecardState extends State<Moviecard> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(15),
                 child: SizedBox(
-                  height: 300.h,
-                  width: 220.w,
+                  height: R.movieCardHeight,
+                  width: R.movieCardWidth,
                   child: Image.network(
                     widget.snap["Poster"],
                     fit: BoxFit.fill,

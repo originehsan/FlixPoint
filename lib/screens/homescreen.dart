@@ -14,8 +14,9 @@ import 'package:movieticket/screens/search_screen.dart';
 import 'package:movieticket/services/tmdb_service.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/responsive.dart';
-import 'package:movieticket/widgets/coming_soon.dart';
+import 'package:movieticket/widgets/movie_card_widget.dart';
 import 'package:movieticket/widgets/offline_banner.dart';
+import 'package:movieticket/utils/page_transitions.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -145,9 +146,7 @@ class _HomescreenState extends State<Homescreen> {
   void _navigateToDetails(TmdbMovie movie) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => MovieDetailsScreen(movie: movie),
-      ),
+      AppRoutes.fadeRoute(MovieDetailsScreen(movie: movie)),
     );
   }
 
@@ -242,9 +241,7 @@ class _HomescreenState extends State<Homescreen> {
           GestureDetector(
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const SearchScreen(),
-              ),
+              AppRoutes.slideRightRoute(const SearchScreen()),
             ),
             child: Container(
               padding: const EdgeInsets.all(10),
@@ -582,127 +579,27 @@ class _HomescreenState extends State<Homescreen> {
       children: [
         _sectionHeader(title, onSeeAll: () {}),
         SizedBox(
-          height: R.sectionHeight,
+          height: R.movieCardHeight + 60,
           child: isLoading
               ? _buildHorizontalShimmer()
               : ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: R.horizontalPadding,
-                  ),
+                  padding: EdgeInsets.zero,
                   itemCount: movies.length,
                   itemBuilder: (context, index) {
-                    final movie = movies[index];
-                    return GestureDetector(
-                      onTap: () => _navigateToDetails(movie),
-                      child: Container(
-                        width: R.movieCardWidth,
-                        margin: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(R.cardRadius),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(R.cardRadius),
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Hero(
-                                tag: 'movie_${movie.id}_$title',
-                                child: CachedNetworkImage(
-                                  imageUrl: _tmdbService
-                                      .getPosterUrl(movie.posterPath),
-                                  fit: BoxFit.cover,
-                                  placeholder: (context, url) => Container(
-                                    color: surfaceColor,
-                                    child: const Center(
-                                      child: CircularProgressIndicator(
-                                        color: appthemecolor,
-                                        strokeWidth: 2,
-                                      ),
-                                    ),
-                                  ),
-                                  errorWidget: (context, url, error) =>
-                                      Container(
-                                    color: surfaceColor,
-                                    child: const Icon(
-                                      Icons.movie,
-                                      color: appthemecolor,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 0,
-                                left: 0,
-                                right: 0,
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.black.withValues(alpha: 0.9),
-                                        Colors.transparent,
-                                      ],
-                                      begin: Alignment.bottomCenter,
-                                      end: Alignment.topCenter,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        movie.title,
-                                        style: TextStyle(
-                                          color: primaryColor,
-                                          fontSize: R.sp(10),
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.star,
-                                            color: appthemecolor,
-                                            size: R.sp(10),
-                                          ),
-                                          const SizedBox(width: 2),
-                                          Text(
-                                            movie.formattedRating,
-                                            style: TextStyle(
-                                              color: appthemecolor,
-                                              fontSize: R.sp(9),
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        left: index == 0 ? R.horizontalPadding : 0,
+                        right: index == movies.length - 1
+                            ? R.horizontalPadding
+                            : 12,
                       ),
-                    ).animate().fadeIn(
-                          delay: Duration(
-                            milliseconds: index * 50,
-                          ),
-                        );
+                      child: MovieCardWidget(
+                        movie: movies[index],
+                        index: index,
+                        onTap: () => _navigateToDetails(movies[index]),
+                      ),
+                    );
                   },
                 ),
         ),
@@ -718,16 +615,27 @@ class _HomescreenState extends State<Homescreen> {
         movieProvider.isLoadingUpcoming
             ? _buildHorizontalShimmer()
             : SizedBox(
-                height: R.movieCardHeight + 80,
+                height: R.movieCardHeight + 60,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: R.horizontalPadding,
-                  ),
+                  padding: EdgeInsets.zero,
                   itemCount: movieProvider.upcoming.length,
                   itemBuilder: (context, index) {
-                    return ComingSoon(
-                      movie: movieProvider.upcoming[index],
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        left: index == 0 ? R.horizontalPadding : 0,
+                        right: index == movieProvider.upcoming.length - 1
+                            ? R.horizontalPadding
+                            : 12,
+                      ),
+                      child: MovieCardWidget(
+                        movie: movieProvider.upcoming[index],
+                        index: index,
+                        onTap: () =>
+                            _navigateToDetails(movieProvider.upcoming[index]),
+                        badgeText: 'SOON',
+                        badgeColor: appthemecolor,
+                      ),
                     );
                   },
                 ),
@@ -755,142 +663,28 @@ class _HomescreenState extends State<Homescreen> {
       children: [
         _sectionHeader('Recommended For You'),
         SizedBox(
-          height: R.sectionHeight,
+          height: R.movieCardHeight + 60,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(
-              horizontal: R.horizontalPadding,
-            ),
+            padding: EdgeInsets.zero,
             itemCount: _recommendations.length,
             itemBuilder: (context, index) {
               final movie = _recommendations[index];
-              return GestureDetector(
-                onTap: () => _navigateToDetails(movie),
-                child: Container(
-                  width: R.movieCardWidth,
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(R.cardRadius),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(R.cardRadius),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        CachedNetworkImage(
-                          imageUrl: _tmdbService.getPosterUrl(movie.posterPath),
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) =>
-                              Container(color: surfaceColor),
-                          errorWidget: (context, url, error) => Container(
-                            color: surfaceColor,
-                            child: const Icon(
-                              Icons.movie,
-                              color: appthemecolor,
-                            ),
-                          ),
-                        ),
-                        // Gold sparkle badge
-                        Positioned(
-                          top: 6,
-                          left: 6,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: appthemecolor,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.auto_awesome,
-                                  color: Colors.black,
-                                  size: 8,
-                                ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  'For You',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontSize: R.sp(8),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.black.withValues(alpha: 0.9),
-                                  Colors.transparent,
-                                ],
-                                begin: Alignment.bottomCenter,
-                                end: Alignment.topCenter,
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  movie.title,
-                                  style: TextStyle(
-                                    color: primaryColor,
-                                    fontSize: R.sp(10),
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.star_rounded,
-                                      color: appthemecolor,
-                                      size: R.sp(10),
-                                    ),
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      movie.formattedRating,
-                                      style: TextStyle(
-                                        color: appthemecolor,
-                                        fontSize: R.sp(9),
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: index == 0 ? R.horizontalPadding : 0,
+                  right: index == _recommendations.length - 1
+                      ? R.horizontalPadding
+                      : 12,
                 ),
-              ).animate().fadeIn(
-                    delay: Duration(milliseconds: index * 50),
-                  );
+                child: MovieCardWidget(
+                  movie: movie,
+                  index: index,
+                  onTap: () => _navigateToDetails(movie),
+                  badgeText: 'FOR YOU',
+                  badgeColor: const Color(0xFF6D28D9),
+                ),
+              );
             },
           ),
         ),
@@ -908,152 +702,28 @@ class _HomescreenState extends State<Homescreen> {
             : movieProvider.trending.isEmpty
                 ? const SizedBox()
                 : SizedBox(
-                    height: R.sectionHeight,
+                    height: R.movieCardHeight + 60,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: R.horizontalPadding,
-                      ),
+                      padding: EdgeInsets.zero,
                       itemCount: movieProvider.trending.length,
                       itemBuilder: (context, index) {
                         final movie = movieProvider.trending[index];
-                        return GestureDetector(
-                          onTap: () => _navigateToDetails(movie),
-                          child: Container(
-                            width: R.movieCardWidth,
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(
-                                R.cardRadius,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.3),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(
-                                R.cardRadius,
-                              ),
-                              child: Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  CachedNetworkImage(
-                                    imageUrl: _tmdbService
-                                        .getPosterUrl(movie.posterPath),
-                                    fit: BoxFit.cover,
-                                    placeholder: (context, url) =>
-                                        Container(color: surfaceColor),
-                                    errorWidget: (context, url, error) =>
-                                        Container(
-                                      color: surfaceColor,
-                                      child: const Icon(
-                                        Icons.movie,
-                                        color: appthemecolor,
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    top: 6,
-                                    left: 6,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(
-                                            Icons.local_fire_department,
-                                            color: Colors.white,
-                                            size: 8,
-                                          ),
-                                          const SizedBox(width: 2),
-                                          Text(
-                                            'HOT',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: R.sp(8),
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    bottom: 0,
-                                    left: 0,
-                                    right: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Colors.black.withValues(alpha: 0.9),
-                                            Colors.transparent,
-                                          ],
-                                          begin: Alignment.bottomCenter,
-                                          end: Alignment.topCenter,
-                                        ),
-                                      ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            movie.title,
-                                            style: TextStyle(
-                                              color: primaryColor,
-                                              fontSize: R.sp(10),
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          Row(
-                                            children: [
-                                              Icon(
-                                                Icons.star_rounded,
-                                                color: appthemecolor,
-                                                size: R.sp(10),
-                                              ),
-                                              const SizedBox(width: 2),
-                                              Text(
-                                                movie.formattedRating,
-                                                style: TextStyle(
-                                                  color: appthemecolor,
-                                                  fontSize: R.sp(9),
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                        return Padding(
+                          padding: EdgeInsets.only(
+                            left: index == 0 ? R.horizontalPadding : 0,
+                            right: index == movieProvider.trending.length - 1
+                                ? R.horizontalPadding
+                                : 12,
                           ),
-                        ).animate().fadeIn(
-                              delay: Duration(
-                                milliseconds: index * 50,
-                              ),
-                            );
+                          child: MovieCardWidget(
+                            movie: movie,
+                            index: index,
+                            onTap: () => _navigateToDetails(movie),
+                            badgeText: 'HOT',
+                            badgeColor: Colors.red,
+                          ),
+                        );
                       },
                     ),
                   ),

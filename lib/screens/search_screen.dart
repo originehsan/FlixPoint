@@ -6,6 +6,7 @@ import 'package:movieticket/screens/moviedetails.dart';
 import 'package:movieticket/services/tmdb_service.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/responsive.dart';
+import 'package:movieticket/utils/page_transitions.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -249,8 +250,10 @@ class _SearchScreenState extends State<SearchScreen> {
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(
-            R.horizontalPadding, 12,
-            R.horizontalPadding, 8,
+            R.horizontalPadding,
+            12,
+            R.horizontalPadding,
+            8,
           ),
           child: Text(
             '${_results.length} results found',
@@ -279,9 +282,8 @@ class _SearchScreenState extends State<SearchScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          MovieDetailsScreen(movie: movie),
+                    AppRoutes.fadeRoute(
+                      MovieDetailsScreen(movie: movie),
                     ),
                   );
                 },
@@ -306,8 +308,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       fit: StackFit.expand,
                       children: [
                         CachedNetworkImage(
-                          imageUrl: _tmdbService
-                              .getPosterUrl(movie.posterPath),
+                          imageUrl: _tmdbService.getPosterUrl(movie.posterPath),
                           fit: BoxFit.cover,
                           placeholder: (context, url) => Container(
                             color: surfaceColor,
@@ -318,8 +319,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               ),
                             ),
                           ),
-                          errorWidget: (context, url, error) =>
-                              Container(
+                          errorWidget: (context, url, error) => Container(
                             color: surfaceColor,
                             child: const Icon(
                               Icons.movie,
@@ -337,8 +337,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               gradient: heroGradient,
                             ),
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(

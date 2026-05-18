@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:movieticket/methods/firestore_methods.dart';
 import 'package:movieticket/models/moviedata.dart';
@@ -293,13 +292,13 @@ class _UploadState extends State<Upload> {
                   children: [
                     Image.memory(
                       movieposter!,
-                      height: 100.h,
-                      width: 100.w,
+                      height: 100,
+                      width: 100,
                       fit: BoxFit.fill,
                     ),
                     Container(
-                      height: 100.h,
-                      width: 100.w,
+                      height: 100,
+                      width: 100,
                       decoration: const BoxDecoration(
                         color: Color.fromARGB(154, 17, 16, 16),
                       ),
@@ -411,8 +410,8 @@ class _UploadState extends State<Upload> {
                 child: _selectedImage != null
                     ? Image.memory(
                         _selectedImage!,
-                        height: 100.h,
-                        width: 150.w,
+                        height: 100,
+                        width: 150,
                         fit: BoxFit.fill,
                       )
                     : Icon(Icons.add_photo_alternate, size: 100),

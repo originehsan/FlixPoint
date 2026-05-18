@@ -14,6 +14,7 @@ import 'package:readmore/readmore.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:movieticket/provider/booking_provider.dart';
+import 'package:movieticket/utils/page_transitions.dart';
 import 'package:provider/provider.dart';
 
 class MovieDetailsScreen extends StatefulWidget {
@@ -184,21 +185,18 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            Hero(
-              tag: 'movie_${widget.movie.id}',
-              child: CachedNetworkImage(
-                imageUrl: _tmdbService.getBackdropUrl(
-                  widget.movie.backdropPath,
-                ),
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(color: surfaceColor),
-                errorWidget: (context, url, error) => Container(
-                  color: surfaceColor,
-                  child: const Icon(
-                    Icons.movie,
-                    color: appthemecolor,
-                    size: 50,
-                  ),
+            CachedNetworkImage(
+              imageUrl: _tmdbService.getBackdropUrl(
+                widget.movie.backdropPath,
+              ),
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(color: surfaceColor),
+              errorWidget: (context, url, error) => Container(
+                color: surfaceColor,
+                child: const Icon(
+                  Icons.movie,
+                  color: appthemecolor,
+                  size: 50,
                 ),
               ),
             ),
@@ -648,9 +646,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => MovieDetailsScreen(movie: movie),
-                      ),
+                      AppRoutes.fadeRoute(MovieDetailsScreen(movie: movie)),
                     );
                   },
                   child: Container(
@@ -1164,15 +1160,13 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
             bookingProvider.setMovie(widget.movie);
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => SeatSelection(
-                  movie: widget.movie,
-                  theatreName: bookingProvider.cinemaName,
-                  theatreAddress: bookingProvider.cinemaAddress,
-                  theatreLogo: bookingProvider.cinemaLogo,
-                  cinemaId: bookingProvider.cinemaId,
-                ),
-              ),
+              AppRoutes.slideUpRoute(SeatSelection(
+                movie: widget.movie,
+                theatreName: bookingProvider.cinemaName,
+                theatreAddress: bookingProvider.cinemaAddress,
+                theatreLogo: bookingProvider.cinemaLogo,
+                cinemaId: bookingProvider.cinemaId,
+              )),
             );
           } else {
             showSnackBar('Please select a cinema first', context);

@@ -7,6 +7,7 @@ import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/navbar.dart';
 import 'package:movieticket/utils/pickimage.dart';
 import 'package:movieticket/utils/responsive.dart';
+import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/widgets/text_field.dart';
 import 'package:provider/provider.dart';
 
@@ -30,8 +31,7 @@ class _LoginInState extends State<LoginIn> {
   }
 
   Future<void> _loginUser() async {
-    if (_emailController.text.isEmpty ||
-        _passwordController.text.isEmpty) {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       showSnackBar('Please fill all fields', context);
       return;
     }
@@ -60,9 +60,7 @@ class _LoginInState extends State<LoginIn> {
       setState(() => _isLoading = false);
 
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => Navbar(name: userProvider.name),
-        ),
+        AppRoutes.fadeRoute(Navbar(name: userProvider.name)),
       );
     } else {
       setState(() => _isLoading = false);

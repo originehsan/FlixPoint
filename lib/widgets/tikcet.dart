@@ -1,8 +1,8 @@
 import "dart:io";
 import "package:flutter/material.dart";
-import "package:flutter_screenutil/flutter_screenutil.dart";
 import "package:flutter_svg/flutter_svg.dart";
 import "package:movieticket/utils/color.dart";
+import "package:movieticket/utils/responsive.dart";
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 
@@ -54,6 +54,7 @@ class _TicketScreenState extends State<Ticket> {
 
   @override
   Widget build(BuildContext context) {
+    R.init(context);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: mobileBackgroundColor,
@@ -67,7 +68,7 @@ class _TicketScreenState extends State<Ticket> {
           child: Column(
             children: [
               Container(
-                height: 680.h,
+                height: 680,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: primaryColor,
@@ -84,27 +85,27 @@ class _TicketScreenState extends State<Ticket> {
                               borderRadius: BorderRadius.circular(10),
                               child: Image.network(
                                 widget.snap["Poster"],
-                                height: 200.h,
+                                height: 200,
                                 fit: BoxFit.fill,
                               )),
                           SizedBox(
-                            width: 20.w,
+                            width: 20,
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               SizedBox(
-                                height: 30.h,
+                                height: 30,
                               ),
                               Text(
                                 widget.snap["moviename"],
                                 style: TextStyle(
                                     color: Colors.black,
-                                    fontSize: 18.sp,
+                                    fontSize: R.sp(18),
                                     fontWeight: FontWeight.w600),
                               ),
                               SizedBox(
-                                height: 5.h,
+                                height: 5,
                               ),
                               Row(
                                 children: [
@@ -116,18 +117,18 @@ class _TicketScreenState extends State<Ticket> {
                                     ),
                                   ),
                                   SizedBox(
-                                    width: 5.w,
+                                    width: 5,
                                   ),
                                   Text(
                                       '${widget.snap["TimeInHours"]} hours ${widget.snap["TimeInMin"]} minutes',
                                       style: TextStyle(
                                           color: Colors.black,
-                                          fontSize: 13.sp,
+                                          fontSize: R.sp(13),
                                           fontWeight: FontWeight.w400))
                                 ],
                               ),
                               SizedBox(
-                                height: 5.h,
+                                height: 5,
                               ),
                               Row(
                                 children: [
@@ -139,16 +140,16 @@ class _TicketScreenState extends State<Ticket> {
                                     ),
                                   ),
                                   SizedBox(
-                                    width: 5.w,
+                                    width: 5,
                                   ),
                                   SizedBox(
-                                    width: 100.w,
+                                    width: 100,
                                     child: Text(
                                         '${widget.snap["Type of movie"][0]}, ${widget.snap["Type of movie"][1]}',
                                         maxLines: 2,
                                         style: TextStyle(
                                             color: Colors.black,
-                                            fontSize: 13.sp,
+                                            fontSize: R.sp(13),
                                             fontWeight: FontWeight.w400)),
                                   )
                                 ],
@@ -158,7 +159,7 @@ class _TicketScreenState extends State<Ticket> {
                         ],
                       ),
                       SizedBox(
-                        height: 25.h,
+                        height: 25,
                       ),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,10 +174,10 @@ class _TicketScreenState extends State<Ticket> {
                                     Color.fromARGB(255, 88, 87, 87),
                                     BlendMode.srcIn,
                                   ),
-                                  height: 40.h,
+                                  height: 40,
                                 ),
                                 SizedBox(
-                                  width: 5.w,
+                                  width: 5,
                                 ),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -185,17 +186,17 @@ class _TicketScreenState extends State<Ticket> {
                                       widget.time,
                                       style: TextStyle(
                                           color: Colors.black,
-                                          fontSize: 14.sp,
+                                          fontSize: R.sp(14),
                                           fontWeight: FontWeight.w500),
                                     ),
                                     SizedBox(
-                                      height: 10.h,
+                                      height: 10,
                                     ),
                                     Text(
                                       '${widget.date}.02.2024',
                                       style: TextStyle(
                                           color: Colors.black,
-                                          fontSize: 14.sp,
+                                          fontSize: R.sp(14),
                                           fontWeight: FontWeight.w500),
                                     ),
                                   ],
@@ -208,10 +209,10 @@ class _TicketScreenState extends State<Ticket> {
                               children: [
                                 SvgPicture.asset(
                                   "assets/Seat Cinema.svg",
-                                  height: 40.h,
+                                  height: 40,
                                 ),
                                 SizedBox(
-                                  width: 5.w,
+                                  width: 5,
                                 ),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,11 +221,11 @@ class _TicketScreenState extends State<Ticket> {
                                       "Screen 4",
                                       style: TextStyle(
                                           color: Colors.black,
-                                          fontSize: 14.sp,
+                                          fontSize: R.sp(14),
                                           fontWeight: FontWeight.w500),
                                     ),
                                     SizedBox(
-                                      height: 15.h,
+                                      height: 15,
                                     ),
                                     Row(
                                       children: [
@@ -232,7 +233,7 @@ class _TicketScreenState extends State<Ticket> {
                                           'Seat ',
                                           style: TextStyle(
                                               color: Colors.black,
-                                              fontSize: 14.sp,
+                                              fontSize: R.sp(14),
                                               fontWeight: FontWeight.w500),
                                         ),
                                         ...List.generate(
@@ -241,7 +242,7 @@ class _TicketScreenState extends State<Ticket> {
                                             '${widget.seat[index]}, ',
                                             style: TextStyle(
                                                 color: Colors.black,
-                                                fontSize: 14.sp,
+                                                fontSize: R.sp(14),
                                                 fontWeight: FontWeight.w500),
                                           ),
                                         ),
@@ -255,31 +256,31 @@ class _TicketScreenState extends State<Ticket> {
                         ],
                       ),
                       SizedBox(
-                        height: 10.h,
+                        height: 10,
                       ),
                       const Divider(
                         color: Colors.black,
                       ),
                       SizedBox(
-                        height: 10.h,
+                        height: 10,
                       ),
                       Row(
                         children: [
                           SvgPicture.asset("assets/money-send.svg"),
                           SizedBox(
-                            width: 10.w,
+                            width: 10,
                           ),
                           Text(
                             '₹${widget.price}.000',
                             style: TextStyle(
                                 color: Colors.black,
                                 fontWeight: FontWeight.w500,
-                                fontSize: 16.sp),
+                                fontSize: R.sp(16)),
                           )
                         ],
                       ),
                       SizedBox(
-                        height: 5.h,
+                        height: 5,
                       ),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,10 +291,10 @@ class _TicketScreenState extends State<Ticket> {
                               Colors.black,
                               BlendMode.srcIn,
                             ),
-                            height: 25.h,
+                            height: 25,
                           ),
                           SizedBox(
-                            width: 10.w,
+                            width: 10,
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -305,15 +306,15 @@ class _TicketScreenState extends State<Ticket> {
                                     style: TextStyle(
                                         color: Colors.black,
                                         fontWeight: FontWeight.w500,
-                                        fontSize: 16.sp),
+                                        fontSize: R.sp(16)),
                                   ),
                                   SizedBox(
-                                    width: 5.w,
+                                    width: 5,
                                   ),
                                   Image.network(
                                     widget.theatreicon,
-                                    height: 30.h,
-                                    width: 40.w,
+                                    height: 30,
+                                    width: 40,
                                     fit: BoxFit.fill,
                                   )
                                 ],
@@ -321,21 +322,21 @@ class _TicketScreenState extends State<Ticket> {
                               Text(
                                 widget.theatreAdress,
                                 style: TextStyle(
-                                    color: Colors.black, fontSize: 14.sp),
+                                    color: Colors.black, fontSize: R.sp(14)),
                               ),
                             ],
                           )
                         ],
                       ),
                       SizedBox(
-                        height: 10.h,
+                        height: 10,
                       ),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           SvgPicture.asset("assets/note.svg"),
                           SizedBox(
-                            width: 10.w,
+                            width: 10,
                           ),
                           const Expanded(
                               child: Text(
@@ -345,20 +346,20 @@ class _TicketScreenState extends State<Ticket> {
                         ],
                       ),
                       SizedBox(
-                        height: 10.h,
+                        height: 10,
                       ),
                       SvgPicture.asset("assets/dotted line.svg"),
                       SizedBox(
-                        height: 10.h,
+                        height: 10,
                       ),
                       Image.asset(
                         "assets/qr code.png",
-                        height: 150.h,
-                        width: 150.w,
+                        height: 150,
+                        width: 150,
                         fit: BoxFit.fill,
                       ),
                       SizedBox(
-                        height: 10.h,
+                        height: 10,
                       ),
                       Text(
                         'Order ID: ${widget.orderId}',

@@ -57,9 +57,6 @@ dependencies:
   # UUID generation
   uuid: ^4.5.3
 
-  # Responsive design
-  flutter_screenutil: ^5.9.0
-
   # Fixed newer Flutter compatibility issue
   carousel_slider: ^5.1.2
 
@@ -92,6 +89,9 @@ dependencies:
 
   # Loading shimmer
   shimmer: ^3.0.0
+
+  # Spacing widget
+  gap: ^3.0.1
 
   # State management
   provider: ^6.1.2

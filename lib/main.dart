@@ -5,10 +5,8 @@ import 'package:movieticket/provider/movie_provider.dart';
 import 'package:movieticket/provider/moviedetails.dart';
 import 'package:movieticket/provider/user_provider.dart';
 import 'package:movieticket/screens/splashscreen.dart';
-import 'package:movieticket/utils/dimension.dart';
 import 'firebase_options.dart';
 import 'package:movieticket/utils/color.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
 void main() async {
@@ -24,35 +22,29 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ScreenUtilInit(
-      designSize: AppDimensions.screenSize,
-      minTextAdapt: true,
-      builder: (context, child) {
-        return MultiProvider(
-          providers: [
-            ChangeNotifierProvider(
-              create: (context) => Movie(),
-            ),
-            ChangeNotifierProvider(
-              // Removed ..initialize() - handled in splashscreen
-              create: (context) => UserProvider(),
-            ),
-            ChangeNotifierProvider(
-              create: (context) => MovieProvider()..loadAllMovies(),
-            ),
-            ChangeNotifierProvider(
-              create: (context) => BookingProvider(),
-            ),
-          ],
-          child: MaterialApp(
-            debugShowCheckedModeBanner: false,
-            theme: ThemeData.dark().copyWith(
-              scaffoldBackgroundColor: mobileBackgroundColor,
-            ),
-            home: const SplashScreen(),
-          ),
-        );
-      },
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (context) => Movie(),
+        ),
+        ChangeNotifierProvider(
+          // Removed ..initialize() - handled in splashscreen
+          create: (context) => UserProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => MovieProvider()..loadAllMovies(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => BookingProvider(),
+        ),
+      ],
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData.dark().copyWith(
+          scaffoldBackgroundColor: mobileBackgroundColor,
+        ),
+        home: const SplashScreen(),
+      ),
     );
   }
 }
