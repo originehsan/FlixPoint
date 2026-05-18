@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:movieticket/auth/confirmOTP.dart';
 import 'package:movieticket/utils/color.dart';
+import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
 
 class SignUp extends StatefulWidget {
@@ -50,8 +51,8 @@ class _SignUpState extends State<SignUp> {
           setState(() => _isLoading = false);
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) => ConfirmOTP(
+            AppRoutes.authRoute(
+              ConfirmOTP(
                 phonenumber: _phoneController.text.trim(),
                 verificationId: verificationId,
               ),
@@ -198,8 +199,7 @@ class _SignUpState extends State<SignUp> {
                           decoration: BoxDecoration(
                             border: Border(
                               right: BorderSide(
-                                color:
-                                    appthemecolor.withValues(alpha: 0.2),
+                                color: appthemecolor.withValues(alpha: 0.2),
                               ),
                             ),
                           ),
@@ -228,16 +228,14 @@ class _SignUpState extends State<SignUp> {
                                 fontSize: R.sp(14),
                               ),
                               border: InputBorder.none,
-                              contentPadding:
-                                  const EdgeInsets.symmetric(
+                              contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 14,
                                 vertical: 16,
                               ),
                               counterText: '',
                             ),
                             validator: (value) {
-                              if (value == null ||
-                                  value.length != 10) {
+                              if (value == null || value.length != 10) {
                                 return 'Enter valid 10 digit number';
                               }
                               return null;

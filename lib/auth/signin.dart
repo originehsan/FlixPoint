@@ -60,7 +60,7 @@ class _LoginInState extends State<LoginIn> {
       setState(() => _isLoading = false);
 
       Navigator.of(context).pushReplacement(
-        AppRoutes.fadeRoute(Navbar(name: userProvider.name)),
+        AppRoutes.homeEntryRoute(Navbar(name: userProvider.name)),
       );
     } else {
       setState(() => _isLoading = false);

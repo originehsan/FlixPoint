@@ -88,7 +88,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       showSnackBar('Registered successfully!', context);
 
       Navigator.of(context).pushReplacement(
-        AppRoutes.fadeRoute(Navbar(name: userProvider.name)),
+        AppRoutes.homeEntryRoute(Navbar(name: userProvider.name)),
       );
     } else {
       setState(() => _isLoading = false);

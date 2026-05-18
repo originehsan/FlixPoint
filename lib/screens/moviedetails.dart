@@ -646,7 +646,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
-                      AppRoutes.fadeRoute(MovieDetailsScreen(movie: movie)),
+                      AppRoutes.scaleRoute(MovieDetailsScreen(movie: movie)),
                     );
                   },
                   child: Container(

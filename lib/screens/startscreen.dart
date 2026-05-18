@@ -8,6 +8,7 @@ import 'package:movieticket/models/tmdb_movie.dart';
 import 'package:movieticket/provider/movie_provider.dart';
 import 'package:movieticket/services/tmdb_service.dart';
 import 'package:movieticket/utils/color.dart';
+import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:provider/provider.dart';
 
@@ -320,8 +321,8 @@ class _StartScreenState extends State<StartScreen> {
           GestureDetector(
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const LoginIn(),
+              AppRoutes.authRoute(
+                const LoginIn(),
               ),
             ),
             child: Container(
@@ -362,8 +363,8 @@ class _StartScreenState extends State<StartScreen> {
           GestureDetector(
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const SignUp(),
+              AppRoutes.authRoute(
+                const SignUp(),
               ),
             ),
             child: Container(

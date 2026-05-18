@@ -35,9 +35,7 @@ class _NavbarState extends State<Navbar> {
     // Get name from UserProvider
     // Falls back to widget.name if provider name is empty
     final userProvider = Provider.of<UserProvider>(context);
-    final name = userProvider.name.isNotEmpty
-        ? userProvider.name
-        : widget.name;
+    final name = userProvider.name.isNotEmpty ? userProvider.name : widget.name;
 
     // Build screens here so name is always fresh
     final screens = [
@@ -49,9 +47,34 @@ class _NavbarState extends State<Navbar> {
 
     return Scaffold(
       backgroundColor: mobileBackgroundColor,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: screens,
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 300),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) {
+          return ScaleTransition(
+            scale: Tween<double>(
+              begin: 0.96,
+              end: 1.0,
+            ).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              ),
+            ),
+            child: FadeTransition(
+              opacity: CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeInOut,
+              ),
+              child: child,
+            ),
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey<int>(_currentIndex),
+          child: screens[_currentIndex],
+        ),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -152,9 +175,7 @@ class _NavbarState extends State<Navbar> {
               style: TextStyle(
                 color: isSelected ? appthemecolor : secondaryColor,
                 fontSize: R.sp(10),
-                fontWeight: isSelected
-                    ? FontWeight.w600
-                    : FontWeight.w400,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
               ),
               child: Text(_tabs[index]['label'] as String),
             ),

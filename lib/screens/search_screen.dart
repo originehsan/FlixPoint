@@ -282,7 +282,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 onTap: () {
                   Navigator.push(
                     context,
-                    AppRoutes.fadeRoute(
+                    AppRoutes.scaleRoute(
                       MovieDetailsScreen(movie: movie),
                     ),
                   );

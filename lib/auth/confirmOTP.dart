@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:movieticket/auth/registration.dart';
 import 'package:movieticket/utils/color.dart';
+import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/pickimage.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:pinput/pinput.dart';
@@ -55,8 +56,8 @@ class _ConfirmOTPState extends State<ConfirmOTP> {
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => const RegistrationScreen(),
+        AppRoutes.authRoute(
+          const RegistrationScreen(),
         ),
       );
     } catch (e) {
@@ -199,12 +200,10 @@ class _ConfirmOTPState extends State<ConfirmOTP> {
                     controller: _pinController,
                     focusNode: _focusNode,
                     defaultPinTheme: defaultPinTheme,
-                    separatorBuilder: (index) =>
-                        const SizedBox(width: 8),
+                    separatorBuilder: (index) => const SizedBox(width: 8),
                     hapticFeedbackType: HapticFeedbackType.lightImpact,
                     focusedPinTheme: defaultPinTheme.copyWith(
-                      decoration:
-                          defaultPinTheme.decoration!.copyWith(
+                      decoration: defaultPinTheme.decoration!.copyWith(
                         border: Border.all(
                           color: appthemecolor,
                           width: 2,
@@ -219,8 +218,7 @@ class _ConfirmOTPState extends State<ConfirmOTP> {
                       ),
                     ),
                     submittedPinTheme: defaultPinTheme.copyWith(
-                      decoration:
-                          defaultPinTheme.decoration!.copyWith(
+                      decoration: defaultPinTheme.decoration!.copyWith(
                         color: appthemecolor.withValues(alpha: 0.15),
                         border: Border.all(
                           color: appthemecolor,
@@ -228,8 +226,7 @@ class _ConfirmOTPState extends State<ConfirmOTP> {
                       ),
                     ),
                     errorPinTheme: defaultPinTheme.copyWith(
-                      decoration:
-                          defaultPinTheme.decoration!.copyWith(
+                      decoration: defaultPinTheme.decoration!.copyWith(
                         border: Border.all(color: errorColor),
                       ),
                     ),

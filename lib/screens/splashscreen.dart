@@ -6,6 +6,7 @@ import 'package:movieticket/provider/user_provider.dart';
 import 'package:movieticket/screens/startscreen.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/navbar.dart';
+import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:provider/provider.dart';
 
@@ -158,18 +159,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            OpeningScreen(name: _name),
-        transitionsBuilder:
-            (context, animation, secondaryAnimation, child) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 800),
-      ),
+      AppRoutes.fadeRoute(OpeningScreen(name: _name)),
     );
   }
 
@@ -181,9 +171,7 @@ class _SplashScreenState extends State<SplashScreen>
     await userProvider.initialize();
     if (mounted) {
       setState(() {
-        _name = userProvider.name.isNotEmpty
-            ? userProvider.name
-            : 'User';
+        _name = userProvider.name.isNotEmpty ? userProvider.name : 'User';
       });
     }
   }
@@ -222,11 +210,10 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
 
               // Scan line
-              if (_scanController.value > 0 &&
-                  _scanController.value < 1)
+              if (_scanController.value > 0 && _scanController.value < 1)
                 Positioned(
-                  top: MediaQuery.of(context).size.height *
-                      _scanAnimation.value,
+                  top:
+                      MediaQuery.of(context).size.height * _scanAnimation.value,
                   left: 0,
                   right: 0,
                   child: Container(
@@ -265,12 +252,10 @@ class _SplashScreenState extends State<SplashScreen>
                         (index) {
                           final isRevealed = index < _revealedLetters;
                           return AnimatedOpacity(
-                            duration:
-                                const Duration(milliseconds: 200),
+                            duration: const Duration(milliseconds: 200),
                             opacity: isRevealed ? 1.0 : 0.0,
                             child: AnimatedContainer(
-                              duration:
-                                  const Duration(milliseconds: 300),
+                              duration: const Duration(milliseconds: 300),
                               transform: Matrix4.translationValues(
                                 0,
                                 isRevealed ? 0 : 20,
@@ -288,13 +273,13 @@ class _SplashScreenState extends State<SplashScreen>
                                   shadows: isRevealed
                                       ? [
                                           Shadow(
-                                            color: appthemecolor
-                                                .withValues(alpha: 0.8),
+                                            color: appthemecolor.withValues(
+                                                alpha: 0.8),
                                             blurRadius: 20,
                                           ),
                                           Shadow(
-                                            color: goldLight
-                                                .withValues(alpha: 0.4),
+                                            color: goldLight.withValues(
+                                                alpha: 0.4),
                                             blurRadius: 40,
                                           ),
                                         ]
@@ -312,9 +297,8 @@ class _SplashScreenState extends State<SplashScreen>
                     // Gold underline that draws itself
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 800),
-                      width: _revealedLetters >= _logoText.length
-                          ? R.wp(55)
-                          : 0,
+                      width:
+                          _revealedLetters >= _logoText.length ? R.wp(55) : 0,
                       height: 1.5,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
@@ -358,9 +342,7 @@ class _SplashScreenState extends State<SplashScreen>
                             builder: (context, child) {
                               return Opacity(
                                 opacity:
-                                    (_grainController.value * 10)
-                                            .floor()
-                                            .isEven
+                                    (_grainController.value * 10).floor().isEven
                                         ? 1.0
                                         : 0.0,
                                 child: Container(
@@ -456,8 +438,7 @@ class OpeningScreen extends StatelessWidget {
               );
             }
           }
-          if (snapshot.connectionState ==
-              ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
               child: CircularProgressIndicator(
                 color: appthemecolor,

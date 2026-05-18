@@ -146,7 +146,7 @@ class _HomescreenState extends State<Homescreen> {
   void _navigateToDetails(TmdbMovie movie) {
     Navigator.push(
       context,
-      AppRoutes.fadeRoute(MovieDetailsScreen(movie: movie)),
+      AppRoutes.scaleRoute(MovieDetailsScreen(movie: movie)),
     );
   }
 
