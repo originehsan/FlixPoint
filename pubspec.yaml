@@ -87,6 +87,9 @@ dependencies:
   # Local storage
   shared_preferences: ^2.2.3
 
+  # Network connectivity monitoring
+  connectivity_plus: ^6.1.1
+
   # Loading shimmer
   shimmer: ^3.0.0
 

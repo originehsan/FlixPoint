@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,11 +11,11 @@ import 'package:movieticket/models/tmdb_movie.dart';
 import 'package:movieticket/provider/movie_provider.dart';
 import 'package:movieticket/screens/moviedetails.dart';
 import 'package:movieticket/screens/search_screen.dart';
-import 'package:movieticket/screens/startscreen.dart';
 import 'package:movieticket/services/tmdb_service.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/widgets/coming_soon.dart';
+import 'package:movieticket/widgets/offline_banner.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -27,11 +30,14 @@ class Homescreen extends StatefulWidget {
 class _HomescreenState extends State<Homescreen> {
   final TmdbService _tmdbService = TmdbService();
   int _featuredIndex = 0;
+  List<TmdbMovie> _recommendations = [];
+  bool _isLoadingRecommendations = false;
+  bool _isOffline = false;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
-    // Load movies if not already loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final movieProvider = Provider.of<MovieProvider>(
         context,
@@ -40,7 +46,73 @@ class _HomescreenState extends State<Homescreen> {
       if (!movieProvider.hasData) {
         movieProvider.loadAllMovies();
       }
+      _loadRecommendations();
     });
+    // Add connectivity listener
+    _connectivitySubscription =
+        Connectivity().onConnectivityChanged.listen((result) {
+      final wasOffline = _isOffline;
+      if (mounted) {
+        setState(() {
+          _isOffline = result.contains(ConnectivityResult.none);
+        });
+      }
+      if (wasOffline && !_isOffline && mounted) {
+        Provider.of<MovieProvider>(context, listen: false).refresh();
+        _loadRecommendations();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadRecommendations() async {
+    try {
+      setState(() => _isLoadingRecommendations = true);
+
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (uid.isEmpty) {
+        setState(() => _isLoadingRecommendations = false);
+        return;
+      }
+
+      // Get last booked movie
+      final bookings = await FirebaseFirestore.instance
+          .collection('bookings')
+          .where('userId', isEqualTo: uid)
+          .orderBy('createdAt', descending: true)
+          .limit(1)
+          .get();
+
+      if (bookings.docs.isEmpty) {
+        setState(() => _isLoadingRecommendations = false);
+        return;
+      }
+
+      final lastBooking = bookings.docs.first.data();
+      final lastMovieId = lastBooking['movieId'];
+      if (lastMovieId == null) {
+        setState(() => _isLoadingRecommendations = false);
+        return;
+      }
+
+      final recs = await _tmdbService.getRecommendations(
+        lastMovieId is int ? lastMovieId : int.parse('$lastMovieId'),
+      );
+
+      if (mounted) {
+        setState(() {
+          _recommendations = recs.map((m) => TmdbMovie.fromJson(m)).toList();
+          _isLoadingRecommendations = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingRecommendations = false);
+    }
   }
 
   String _getGreeting() {
@@ -48,6 +120,26 @@ class _HomescreenState extends State<Homescreen> {
     if (hour < 12) return 'Morning';
     if (hour < 17) return 'Afternoon';
     return 'Evening';
+  }
+
+  Widget _buildOfflineBanner() {
+    if (!_isOffline) return const SizedBox();
+    return OfflineBanner(
+      onRetry: () async {
+        final result = await Connectivity().checkConnectivity();
+        if (mounted) {
+          setState(() {
+            _isOffline = result.contains(ConnectivityResult.none);
+          });
+          if (!_isOffline) {
+            Provider.of<MovieProvider>(
+              context,
+              listen: false,
+            ).refresh();
+          }
+        }
+      },
+    );
   }
 
   void _navigateToDetails(TmdbMovie movie) {
@@ -69,7 +161,10 @@ class _HomescreenState extends State<Homescreen> {
       body: RefreshIndicator(
         color: appthemecolor,
         backgroundColor: surfaceColor,
-        onRefresh: () => movieProvider.refresh(),
+        onRefresh: () async {
+          await movieProvider.refresh();
+          await _loadRecommendations();
+        },
         child: CustomScrollView(
           slivers: [
             _buildAppBar(),
@@ -80,7 +175,7 @@ class _HomescreenState extends State<Homescreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSearchBar(),
+                      _buildOfflineBanner(),
                       _buildFeaturedSection(movieProvider),
                       _buildSection(
                         title: 'Now Playing',
@@ -93,7 +188,8 @@ class _HomescreenState extends State<Homescreen> {
                         movies: movieProvider.popular,
                         isLoading: movieProvider.isLoadingPopular,
                       ),
-                      _buildEventsSection(),
+                      _buildRecommendationsSection(),
+                      _buildTrendingSection(movieProvider),
                       const SizedBox(height: 20),
                     ],
                   ),
@@ -166,97 +262,9 @@ class _HomescreenState extends State<Homescreen> {
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: () async {
-              await FirebaseAuth.instance.signOut();
-              if (!mounted) return;
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (context) => const StartScreen(),
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: surfaceColor,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: errorColor.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Icon(
-                Icons.logout_rounded,
-                color: errorColor,
-                size: R.sp(20),
-              ),
-            ),
-          ),
         ],
       ),
     );
-  }
-
-  Widget _buildSearchBar() {
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const SearchScreen(),
-        ),
-      ),
-      child: Container(
-        margin: EdgeInsets.fromLTRB(
-          R.horizontalPadding, 8,
-          R.horizontalPadding, 8,
-        ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16, vertical: 14,
-        ),
-        decoration: BoxDecoration(
-          color: surfaceColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: appthemecolor.withValues(alpha: 0.2),
-          ),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.search, color: appthemecolor, size: 20),
-            const SizedBox(width: 12),
-            Text(
-              'Search movies, events...',
-              style: TextStyle(
-                color: hintColor,
-                fontSize: R.sp(14),
-              ),
-            ),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8, vertical: 4,
-              ),
-              decoration: BoxDecoration(
-                color: appthemecolor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: appthemecolor.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Text(
-                'Search',
-                style: TextStyle(
-                  color: appthemecolor,
-                  fontSize: R.sp(11),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(duration: 400.ms);
   }
 
   Widget _buildFeaturedSection(MovieProvider movieProvider) {
@@ -272,8 +280,7 @@ class _HomescreenState extends State<Homescreen> {
             height: R.featuredHeight,
             autoPlay: true,
             autoPlayInterval: const Duration(seconds: 4),
-            autoPlayAnimationDuration:
-                const Duration(milliseconds: 800),
+            autoPlayAnimationDuration: const Duration(milliseconds: 800),
             enlargeCenterPage: true,
             enlargeFactor: 0.15,
             viewportFraction: 0.85,
@@ -291,9 +298,16 @@ class _HomescreenState extends State<Homescreen> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: appthemecolor.withValues(alpha: 0.3),
-                      width: 0.5,
+                      color: appthemecolor.withValues(alpha: 0.6),
+                      width: 1.5,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: appthemecolor.withValues(alpha: 0.3),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(16),
@@ -301,14 +315,14 @@ class _HomescreenState extends State<Homescreen> {
                       fit: StackFit.expand,
                       children: [
                         CachedNetworkImage(
-                          imageUrl: _tmdbService
-                              .getBackdropUrl(movie.backdropPath),
+                          imageUrl:
+                              _tmdbService.getBackdropUrl(movie.backdropPath),
                           fit: BoxFit.cover,
                           placeholder: (context, url) => _shimmerBox(
-                            double.infinity, double.infinity,
+                            double.infinity,
+                            double.infinity,
                           ),
-                          errorWidget: (context, url, error) =>
-                              _errorBox(),
+                          errorWidget: (context, url, error) => _errorBox(),
                         ),
                         Container(
                           decoration: const BoxDecoration(
@@ -320,7 +334,8 @@ class _HomescreenState extends State<Homescreen> {
                           left: 12,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4,
+                              horizontal: 8,
+                              vertical: 4,
                             ),
                             decoration: BoxDecoration(
                               color: appthemecolor,
@@ -342,14 +357,14 @@ class _HomescreenState extends State<Homescreen> {
                           right: 12,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4,
+                              horizontal: 8,
+                              vertical: 4,
                             ),
                             decoration: BoxDecoration(
                               color: surfaceColor.withValues(alpha: 0.8),
                               borderRadius: BorderRadius.circular(6),
                               border: Border.all(
-                                color: appthemecolor
-                                    .withValues(alpha: 0.5),
+                                color: appthemecolor.withValues(alpha: 0.5),
                               ),
                             ),
                             child: Row(
@@ -379,8 +394,7 @@ class _HomescreenState extends State<Homescreen> {
                           child: Padding(
                             padding: const EdgeInsets.all(12),
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   movie.title,
@@ -396,41 +410,38 @@ class _HomescreenState extends State<Homescreen> {
                                 Row(
                                   children: [
                                     ...movie.genreNames.take(2).map(
-                                      (genre) => Container(
-                                        margin: const EdgeInsets.only(
-                                          right: 6,
-                                        ),
-                                        padding:
-                                            const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 3,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: appthemecolor
-                                              .withValues(alpha: 0.15),
-                                          borderRadius:
-                                              BorderRadius.circular(20),
-                                          border: Border.all(
-                                            color: appthemecolor
-                                                .withValues(alpha: 0.4),
+                                          (genre) => Container(
+                                            margin: const EdgeInsets.only(
+                                              right: 6,
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 3,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: appthemecolor.withValues(
+                                                  alpha: 0.15),
+                                              borderRadius:
+                                                  BorderRadius.circular(20),
+                                              border: Border.all(
+                                                color: appthemecolor.withValues(
+                                                    alpha: 0.4),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              genre,
+                                              style: TextStyle(
+                                                color: appthemecolor,
+                                                fontSize: R.sp(9),
+                                              ),
+                                            ),
                                           ),
                                         ),
-                                        child: Text(
-                                          genre,
-                                          style: TextStyle(
-                                            color: appthemecolor,
-                                            fontSize: R.sp(9),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
                                     const Spacer(),
                                     GestureDetector(
-                                      onTap: () =>
-                                          _navigateToDetails(movie),
+                                      onTap: () => _navigateToDetails(movie),
                                       child: Container(
-                                        padding:
-                                            const EdgeInsets.symmetric(
+                                        padding: const EdgeInsets.symmetric(
                                           horizontal: 12,
                                           vertical: 5,
                                         ),
@@ -498,8 +509,10 @@ class _HomescreenState extends State<Homescreen> {
   Widget _sectionHeader(String title, {VoidCallback? onSeeAll}) {
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        R.horizontalPadding, 20,
-        R.horizontalPadding, 10,
+        R.horizontalPadding,
+        20,
+        R.horizontalPadding,
+        10,
       ),
       child: Row(
         children: [
@@ -534,7 +547,8 @@ class _HomescreenState extends State<Homescreen> {
               onTap: onSeeAll,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 4,
+                  horizontal: 12,
+                  vertical: 4,
                 ),
                 decoration: BoxDecoration(
                   color: appthemecolor.withValues(alpha: 0.1),
@@ -587,12 +601,10 @@ class _HomescreenState extends State<Homescreen> {
                           horizontal: 6,
                         ),
                         decoration: BoxDecoration(
-                          borderRadius:
-                              BorderRadius.circular(R.cardRadius),
+                          borderRadius: BorderRadius.circular(R.cardRadius),
                           boxShadow: [
                             BoxShadow(
-                              color:
-                                  Colors.black.withValues(alpha: 0.3),
+                              color: Colors.black.withValues(alpha: 0.3),
                               blurRadius: 8,
                               spreadRadius: 1,
                               offset: const Offset(0, 4),
@@ -600,8 +612,7 @@ class _HomescreenState extends State<Homescreen> {
                           ],
                         ),
                         child: ClipRRect(
-                          borderRadius:
-                              BorderRadius.circular(R.cardRadius),
+                          borderRadius: BorderRadius.circular(R.cardRadius),
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
@@ -611,8 +622,7 @@ class _HomescreenState extends State<Homescreen> {
                                   imageUrl: _tmdbService
                                       .getPosterUrl(movie.posterPath),
                                   fit: BoxFit.cover,
-                                  placeholder: (context, url) =>
-                                      Container(
+                                  placeholder: (context, url) => Container(
                                     color: surfaceColor,
                                     child: const Center(
                                       child: CircularProgressIndicator(
@@ -640,8 +650,7 @@ class _HomescreenState extends State<Homescreen> {
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
                                       colors: [
-                                        Colors.black
-                                            .withValues(alpha: 0.9),
+                                        Colors.black.withValues(alpha: 0.9),
                                         Colors.transparent,
                                       ],
                                       begin: Alignment.bottomCenter,
@@ -709,7 +718,7 @@ class _HomescreenState extends State<Homescreen> {
         movieProvider.isLoadingUpcoming
             ? _buildHorizontalShimmer()
             : SizedBox(
-                height: R.comingSoonSectionHeight,
+                height: R.movieCardHeight + 80,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   padding: EdgeInsets.symmetric(
@@ -727,86 +736,327 @@ class _HomescreenState extends State<Homescreen> {
     );
   }
 
-  Widget _buildEventsSection() {
+  // NEW: Recommendations Section
+  Widget _buildRecommendationsSection() {
+    if (_isLoadingRecommendations) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionHeader('Recommended For You'),
+          _buildHorizontalShimmer(),
+        ],
+      );
+    }
+
+    if (_recommendations.isEmpty) return const SizedBox();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader('Live Events'),
-        StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('events')
-              .snapshots(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return _buildHorizontalShimmer();
-            }
-            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-              return Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: R.horizontalPadding,
-                  vertical: 16,
-                ),
-                child: Text(
-                  'No events available',
-                  style: TextStyle(
-                    color: secondaryColor,
-                    fontSize: R.sp(13),
-                  ),
-                ),
-              );
-            }
-            return SizedBox(
-              height: R.sectionHeight,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: EdgeInsets.symmetric(
-                  horizontal: R.horizontalPadding,
-                ),
-                itemCount: snapshot.data!.docs.length,
-                itemBuilder: (context, index) {
-                  final data = snapshot.data!.docs[index].data()
-                      as Map<String, dynamic>;
-                  return Container(
-                    width: R.movieCardWidth,
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                    decoration: BoxDecoration(
-                      color: surfaceColor,
-                      borderRadius: BorderRadius.circular(R.cardRadius),
-                      border: Border.all(
-                        color: appthemecolor.withValues(alpha: 0.2),
-                        width: 0.5,
+        _sectionHeader('Recommended For You'),
+        SizedBox(
+          height: R.sectionHeight,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(
+              horizontal: R.horizontalPadding,
+            ),
+            itemCount: _recommendations.length,
+            itemBuilder: (context, index) {
+              final movie = _recommendations[index];
+              return GestureDetector(
+                onTap: () => _navigateToDetails(movie),
+                child: Container(
+                  width: R.movieCardWidth,
+                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(R.cardRadius),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 4),
                       ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(R.cardRadius),
+                    child: Stack(
+                      fit: StackFit.expand,
                       children: [
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundImage: NetworkImage(
-                            data['logo'] ?? '',
+                        CachedNetworkImage(
+                          imageUrl: _tmdbService.getPosterUrl(movie.posterPath),
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) =>
+                              Container(color: surfaceColor),
+                          errorWidget: (context, url, error) => Container(
+                            color: surfaceColor,
+                            child: const Icon(
+                              Icons.movie,
+                              color: appthemecolor,
+                            ),
                           ),
-                          backgroundColor: surfaceColor2,
                         ),
-                        const SizedBox(height: 6),
-                        Text(
-                          data['logoname'] ?? '',
-                          style: TextStyle(
-                            color: primaryColor,
-                            fontSize: R.sp(10),
-                            fontWeight: FontWeight.w500,
+                        // Gold sparkle badge
+                        Positioned(
+                          top: 6,
+                          left: 6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: appthemecolor,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.auto_awesome,
+                                  color: Colors.black,
+                                  size: 8,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  'For You',
+                                  style: TextStyle(
+                                    color: Colors.black,
+                                    fontSize: R.sp(8),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.9),
+                                  Colors.transparent,
+                                ],
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  movie.title,
+                                  style: TextStyle(
+                                    color: primaryColor,
+                                    fontSize: R.sp(10),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.star_rounded,
+                                      color: appthemecolor,
+                                      size: R.sp(10),
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      movie.formattedRating,
+                                      style: TextStyle(
+                                        color: appthemecolor,
+                                        fontSize: R.sp(9),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),
+                  ),
+                ),
+              ).animate().fadeIn(
+                    delay: Duration(milliseconds: index * 50),
                   );
-                },
-              ),
-            );
-          },
+            },
+          ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildTrendingSection(MovieProvider movieProvider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader('Trending Today'),
+        movieProvider.isLoadingTrending
+            ? _buildHorizontalShimmer()
+            : movieProvider.trending.isEmpty
+                ? const SizedBox()
+                : SizedBox(
+                    height: R.sectionHeight,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: R.horizontalPadding,
+                      ),
+                      itemCount: movieProvider.trending.length,
+                      itemBuilder: (context, index) {
+                        final movie = movieProvider.trending[index];
+                        return GestureDetector(
+                          onTap: () => _navigateToDetails(movie),
+                          child: Container(
+                            width: R.movieCardWidth,
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(
+                                R.cardRadius,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                R.cardRadius,
+                              ),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  CachedNetworkImage(
+                                    imageUrl: _tmdbService
+                                        .getPosterUrl(movie.posterPath),
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) =>
+                                        Container(color: surfaceColor),
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                      color: surfaceColor,
+                                      child: const Icon(
+                                        Icons.movie,
+                                        color: appthemecolor,
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 6,
+                                    left: 6,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.local_fire_department,
+                                            color: Colors.white,
+                                            size: 8,
+                                          ),
+                                          const SizedBox(width: 2),
+                                          Text(
+                                            'HOT',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: R.sp(8),
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    left: 0,
+                                    right: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.black.withValues(alpha: 0.9),
+                                            Colors.transparent,
+                                          ],
+                                          begin: Alignment.bottomCenter,
+                                          end: Alignment.topCenter,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            movie.title,
+                                            style: TextStyle(
+                                              color: primaryColor,
+                                              fontSize: R.sp(10),
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.star_rounded,
+                                                color: appthemecolor,
+                                                size: R.sp(10),
+                                              ),
+                                              const SizedBox(width: 2),
+                                              Text(
+                                                movie.formattedRating,
+                                                style: TextStyle(
+                                                  color: appthemecolor,
+                                                  fontSize: R.sp(9),
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ).animate().fadeIn(
+                              delay: Duration(
+                                milliseconds: index * 50,
+                              ),
+                            );
+                      },
+                    ),
+                  ),
       ],
     );
   }

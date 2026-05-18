@@ -88,12 +88,10 @@ class _TicketScreenState extends State<TicketScreen> {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Row(
-                    mainAxisAlignment:
-                        pw.MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Column(
-                        crossAxisAlignment:
-                            pw.CrossAxisAlignment.start,
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
                           pw.Text(
                             'FlixPoint',
@@ -156,8 +154,7 @@ class _TicketScreenState extends State<TicketScreen> {
                   ),
                   pw.Divider(color: PdfColors.amber),
                   pw.Row(
-                    mainAxisAlignment:
-                        pw.MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                     children: [
                       pw.Text(
                         'Total Amount',
@@ -218,9 +215,11 @@ class _TicketScreenState extends State<TicketScreen> {
         '${dir.path}/FlixPoint_${widget.orderId}.pdf',
       );
       await file.writeAsBytes(await pdf.save());
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'My FlixPoint ticket for ${widget.movie.title}',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: 'My FlixPoint ticket for ${widget.movie.title}',
+        ),
       );
     } catch (e) {
       if (mounted) {
@@ -438,8 +437,8 @@ class _TicketScreenState extends State<TicketScreen> {
             child: Stack(
               children: [
                 CachedNetworkImage(
-                  imageUrl: _tmdbService
-                      .getBackdropUrl(widget.movie.backdropPath),
+                  imageUrl:
+                      _tmdbService.getBackdropUrl(widget.movie.backdropPath),
                   width: double.infinity,
                   height: R.isPhone ? 160 : 200,
                   fit: BoxFit.cover,

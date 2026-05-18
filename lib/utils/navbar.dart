@@ -1,12 +1,14 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:movieticket/provider/user_provider.dart';
 import 'package:movieticket/screens/booking_history_screen.dart';
 import 'package:movieticket/screens/events.dart';
 import 'package:movieticket/screens/homescreen.dart';
 import 'package:movieticket/screens/profile.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/responsive.dart';
+import 'package:provider/provider.dart';
 
 class Navbar extends StatefulWidget {
   final String name;
@@ -26,27 +28,30 @@ class _NavbarState extends State<Navbar> {
     {'icon': CupertinoIcons.person, 'label': 'Profile'},
   ];
 
-  late final List<Widget> _screens;
-
   @override
-  void initState() {
-    super.initState();
-    _screens = [
-      Homescreen(name: widget.name),
+  Widget build(BuildContext context) {
+    R.init(context);
+
+    // Get name from UserProvider
+    // Falls back to widget.name if provider name is empty
+    final userProvider = Provider.of<UserProvider>(context);
+    final name = userProvider.name.isNotEmpty
+        ? userProvider.name
+        : widget.name;
+
+    // Build screens here so name is always fresh
+    final screens = [
+      Homescreen(name: name),
       const BookingHistoryScreen(),
       const EventsScreen(),
       const ProfileScreen(),
     ];
-  }
 
-  @override
-  Widget build(BuildContext context) {
-    R.init(context);
     return Scaffold(
       backgroundColor: mobileBackgroundColor,
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: screens,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -57,6 +62,14 @@ class _NavbarState extends State<Navbar> {
               width: 0.5,
             ),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 20,
+              spreadRadius: 2,
+              offset: const Offset(0, -4),
+            ),
+          ],
         ),
         child: SafeArea(
           child: Padding(
@@ -81,11 +94,7 @@ class _NavbarState extends State<Navbar> {
     final isSelected = _currentIndex == index;
 
     return GestureDetector(
-      onTap: () {
-        setState(() {
-          _currentIndex = index;
-        });
-      },
+      onTap: () => setState(() => _currentIndex = index),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
@@ -98,6 +107,12 @@ class _NavbarState extends State<Navbar> {
               ? appthemecolor.withValues(alpha: 0.1)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
+          border: isSelected
+              ? Border.all(
+                  color: appthemecolor.withValues(alpha: 0.2),
+                  width: 0.5,
+                )
+              : null,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -109,6 +124,15 @@ class _NavbarState extends State<Navbar> {
               decoration: BoxDecoration(
                 color: appthemecolor,
                 borderRadius: BorderRadius.circular(2),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: appthemecolor.withValues(alpha: 0.5),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : null,
               ),
             ),
             const SizedBox(height: 4),
@@ -128,7 +152,9 @@ class _NavbarState extends State<Navbar> {
               style: TextStyle(
                 color: isSelected ? appthemecolor : secondaryColor,
                 fontSize: R.sp(10),
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: isSelected
+                    ? FontWeight.w600
+                    : FontWeight.w400,
               ),
               child: Text(_tabs[index]['label'] as String),
             ),

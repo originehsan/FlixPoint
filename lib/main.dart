@@ -34,7 +34,8 @@ class MyApp extends StatelessWidget {
               create: (context) => Movie(),
             ),
             ChangeNotifierProvider(
-              create: (context) => UserProvider()..initialize(),
+              // Removed ..initialize() - handled in splashscreen
+              create: (context) => UserProvider(),
             ),
             ChangeNotifierProvider(
               create: (context) => MovieProvider()..loadAllMovies(),

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 Future<void> seedCinemaData() async {
   final firestore = FirebaseFirestore.instance;
@@ -101,5 +102,5 @@ Future<void> seedCinemaData() async {
     await collection.add(cinema);
   }
 
-  print('Cinema data seeded successfully!');
+  debugPrint('Cinema data seeded successfully!');
 }

@@ -4,98 +4,65 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:movieticket/models/tmdb_movie.dart';
+import 'package:movieticket/provider/user_provider.dart';
 import 'package:movieticket/screens/startscreen.dart';
 import 'package:movieticket/screens/ticketscreen.dart';
-import 'package:movieticket/services/tmdb_service.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/constants.dart';
 import 'package:movieticket/utils/responsive.dart';
+import 'package:provider/provider.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
-
-  @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
-}
-
-class _ProfileScreenState extends State<ProfileScreen> {
-  final TmdbService _tmdbService = TmdbService();
-  Map<String, dynamic>? _userData;
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
-
-  Future<void> _loadUserData() async {
-    try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid == null) return;
-      final doc = await FirebaseFirestore.instance
-          .collection(colUsers)
-          .doc(uid)
-          .get();
-      if (mounted) {
-        setState(() {
-          _userData = doc.data();
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  String get _initials {
-    final name = _userData?['username'] ?? 'User';
-    final parts = name.split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return name
-        .substring(0, name.length < 2 ? name.length : 2)
-        .toUpperCase();
-  }
 
   @override
   Widget build(BuildContext context) {
     R.init(context);
+    final userProvider = Provider.of<UserProvider>(context);
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    if (userProvider.isLoading) {
+      return const Scaffold(
+        backgroundColor: mobileBackgroundColor,
+        body: Center(
+          child: CircularProgressIndicator(color: appthemecolor),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: mobileBackgroundColor,
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: appthemecolor),
-            )
-          : Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: R.maxWidth),
-                child: CustomScrollView(
-                  slivers: [
-                    _buildAppBar(),
-                    SliverToBoxAdapter(
-                      child: Column(
-                        children: [
-                          _buildUserCard(),
-                          SizedBox(height: R.px(20)),
-                          _buildStats(),
-                          SizedBox(height: R.px(20)),
-                          _buildSectionTitle('Booking History'),
-                          const SizedBox(height: 12),
-                          _buildBookingHistory(),
-                          const SizedBox(height: 30),
-                        ],
-                      ),
-                    ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: R.maxWidth),
+          child: CustomScrollView(
+            slivers: [
+              _buildAppBar(context, userProvider),
+              SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    _buildUserCard(context, userProvider),
+                    SizedBox(height: R.px(20)),
+                    _buildStats(uid),
+                    SizedBox(height: R.px(20)),
+                    _buildSectionTitle(),
+                    const SizedBox(height: 12),
+                    _buildBookingHistory(context, uid),
+                    const SizedBox(height: 30),
                   ],
                 ),
               ),
-            ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(
+    BuildContext context,
+    UserProvider userProvider,
+  ) {
     return SliverAppBar(
       backgroundColor: mobileBackgroundColor,
       floating: true,
@@ -119,13 +86,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       actions: [
         GestureDetector(
           onTap: () async {
+            userProvider.clearUser();
             await FirebaseAuth.instance.signOut();
-            if (!mounted) return;
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(
-                builder: (context) => const StartScreen(),
-              ),
-            );
+            if (context.mounted) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(
+                  builder: (context) => const StartScreen(),
+                ),
+              );
+            }
           },
           child: Container(
             margin: const EdgeInsets.only(right: 12),
@@ -148,11 +117,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildUserCard() {
-    final name = _userData?['username'] ?? 'User';
-    final email = _userData?['email'] ?? '';
-    final city = _userData?['city'] ?? '';
-
+  Widget _buildUserCard(
+    BuildContext context,
+    UserProvider userProvider,
+  ) {
     return Container(
       margin: EdgeInsets.fromLTRB(
         R.horizontalPadding, 8,
@@ -203,7 +171,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             alignment: Alignment.center,
             child: Text(
-              _initials,
+              userProvider.initials,
               style: TextStyle(
                 color: appthemecolor,
                 fontSize: R.sp(24),
@@ -217,7 +185,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  name,
+                  userProvider.name.isEmpty
+                      ? 'User'
+                      : userProvider.name,
                   style: TextStyle(
                     color: primaryColor,
                     fontSize: R.sp(18),
@@ -225,11 +195,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                if (email.isNotEmpty)
-                  _profileDetail(Icons.email_rounded, email),
+                if (userProvider.email.isNotEmpty)
+                  _profileDetail(
+                    Icons.email_rounded,
+                    userProvider.email,
+                  ),
                 const SizedBox(height: 4),
-                if (city.isNotEmpty)
-                  _profileDetail(Icons.location_on_rounded, city),
+                if (userProvider.city.isNotEmpty)
+                  _profileDetail(
+                    Icons.location_on_rounded,
+                    userProvider.city,
+                  ),
               ],
             ),
           ),
@@ -258,8 +234,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStats() {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+  Widget _buildStats(String uid) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection(colBookings)
@@ -281,14 +256,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           child: Row(
             children: [
-              _statCard('Total', total.toString(),
-                  Icons.confirmation_num_rounded, appthemecolor),
+              _statCard(
+                'Total',
+                total.toString(),
+                Icons.confirmation_num_rounded,
+                appthemecolor,
+              ),
               SizedBox(width: R.px(10)),
-              _statCard('Upcoming', upcoming.toString(),
-                  Icons.event_rounded, successColor),
+              _statCard(
+                'Upcoming',
+                upcoming.toString(),
+                Icons.event_rounded,
+                successColor,
+              ),
               SizedBox(width: R.px(10)),
-              _statCard('Past', past.toString(),
-                  Icons.history_rounded, secondaryColor),
+              _statCard(
+                'Past',
+                past.toString(),
+                Icons.history_rounded,
+                secondaryColor,
+              ),
             ],
           ),
         );
@@ -345,7 +332,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  Widget _buildSectionTitle() {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: R.horizontalPadding),
       child: Row(
@@ -367,7 +354,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(width: 10),
           Text(
-            title,
+            'Booking History',
             style: TextStyle(
               color: primaryColor,
               fontSize: R.sp(18),
@@ -380,8 +367,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildBookingHistory() {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+  Widget _buildBookingHistory(BuildContext context, String uid) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection(colBookings)
@@ -393,7 +379,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(30),
-              child: CircularProgressIndicator(color: appthemecolor),
+              child: CircularProgressIndicator(
+                color: appthemecolor,
+              ),
             ),
           );
         }
@@ -447,7 +435,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           itemBuilder: (context, index) {
             final data = snapshot.data!.docs[index].data()
                 as Map<String, dynamic>;
-            return _buildBookingCard(data, index);
+            return _buildBookingCard(context, data, index);
           },
         );
       },
@@ -455,7 +443,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildBookingCard(
-      Map<String, dynamic> booking, int index) {
+    BuildContext context,
+    Map<String, dynamic> booking,
+    int index,
+  ) {
     final date = DateTime.tryParse(booking['date'] ?? '');
     final isUpcoming =
         date != null && date.isAfter(DateTime.now());
