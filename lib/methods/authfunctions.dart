@@ -10,30 +10,34 @@ class AuthMethods {
     required String email,
     required String name,
     required String password,
-    required String city,
+    String city = '',
   }) async {
     String res = "some error occurred";
     try {
       UserCredential cred = await _auth.createUserWithEmailAndPassword(
-          email: email, password: password);
-      
-      // REMOVED password from Firestore - security fix
-      UserDetails user = UserDetails(
-        city: city, 
-        email: email, 
-        name: name,
+        email: email,
+        password: password,
       );
-      
+
+      UserDetails user = UserDetails(
+        email: email,
+        name: name,
+        city: city,
+      );
+
       await _firestore
           .collection('Users')
           .doc(cred.user!.uid)
           .set(user.toJson());
+
       res = "success";
     } on FirebaseAuthException catch (error) {
       if (error.code == "email-already-in-use") {
-        res = "The email address is already in use by another account.";
+        res = "This email is already in use.";
       } else if (error.code == "weak-password") {
-        res = "Password should be at least 6 characters";
+        res = "Password must be at least 6 characters.";
+      } else {
+        res = error.message ?? "An error occurred.";
       }
     } catch (err) {
       res = err.toString();
@@ -42,21 +46,29 @@ class AuthMethods {
   }
 
   Future<String> loginuser({
-    required String email, 
+    required String email,
     required String password,
   }) async {
     String res = 'some error occurred';
     try {
       if (email.isNotEmpty && password.isNotEmpty) {
         await _auth.signInWithEmailAndPassword(
-            email: email, password: password);
+          email: email,
+          password: password,
+        );
         res = "success";
       } else {
-        res = "Please enter all the fields";
+        res = "Please enter all fields.";
       }
     } on FirebaseAuthException catch (error) {
       if (error.code == "invalid-credential") {
-        res = "Invalid email or password";
+        res = "Invalid email or password.";
+      } else if (error.code == "user-not-found") {
+        res = "No account found with this email.";
+      } else if (error.code == "wrong-password") {
+        res = "Incorrect password.";
+      } else {
+        res = error.message ?? "An error occurred.";
       }
     } catch (error) {
       res = error.toString();

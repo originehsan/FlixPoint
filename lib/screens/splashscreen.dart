@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:movieticket/auth/signin.dart';
 import 'package:movieticket/provider/user_provider.dart';
-import 'package:movieticket/screens/startscreen.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/navbar.dart';
 import 'package:movieticket/utils/page_transitions.dart';
@@ -19,22 +19,14 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  // Scan line controller
   late AnimationController _scanController;
   late Animation<double> _scanAnimation;
-
-  // Letter reveal controller
   late AnimationController _letterController;
   late Animation<double> _letterAnimation;
-
-  // Grain overlay controller
   late AnimationController _grainController;
-
-  // Fade out controller
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
 
-  // State
   String _name = 'User';
   String _typewriterText = '';
   final String _fullTagline = 'Book. Watch. Enjoy.';
@@ -49,14 +41,12 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _setupAnimations();
     _startSequence();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initialize();
     });
   }
 
   void _setupAnimations() {
-    // Scan line sweeps top to bottom
     _scanController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -66,7 +56,6 @@ class _SplashScreenState extends State<SplashScreen>
       curve: Curves.easeInOut,
     );
 
-    // Letter reveal animation
     _letterController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -76,13 +65,11 @@ class _SplashScreenState extends State<SplashScreen>
       curve: Curves.easeOut,
     );
 
-    // Film grain random flicker
     _grainController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 100),
     )..repeat();
 
-    // Final fade out
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
@@ -94,29 +81,24 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   void _startSequence() async {
-    // Phase 1: Darkness (500ms)
     await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
 
-    // Phase 2: Scan line sweeps (1200ms)
     setState(() => _showGrain = true);
     _scanController.forward();
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
 
-    // Phase 3: Letters reveal one by one
     _letterController.forward();
     _startLetterReveal();
     await Future.delayed(const Duration(milliseconds: 1800));
     if (!mounted) return;
 
-    // Phase 4: Typewriter tagline
     setState(() => _showTagline = true);
     _startTypewriter();
     await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
 
-    // Phase 5: Navigate
     _navigate();
   }
 
@@ -171,7 +153,9 @@ class _SplashScreenState extends State<SplashScreen>
     await userProvider.initialize();
     if (mounted) {
       setState(() {
-        _name = userProvider.name.isNotEmpty ? userProvider.name : 'User';
+        _name = userProvider.name.isNotEmpty
+            ? userProvider.name
+            : 'User';
       });
     }
   }
@@ -204,16 +188,15 @@ class _SplashScreenState extends State<SplashScreen>
               // Film grain background
               if (_showGrain)
                 CustomPaint(
-                  painter: FilmGrainPainter(
-                    _grainController.value,
-                  ),
+                  painter: FilmGrainPainter(_grainController.value),
                 ),
 
               // Scan line
-              if (_scanController.value > 0 && _scanController.value < 1)
+              if (_scanController.value > 0 &&
+                  _scanController.value < 1)
                 Positioned(
-                  top:
-                      MediaQuery.of(context).size.height * _scanAnimation.value,
+                  top: MediaQuery.of(context).size.height *
+                      _scanAnimation.value,
                   left: 0,
                   right: 0,
                   child: Container(
@@ -244,7 +227,6 @@ class _SplashScreenState extends State<SplashScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Logo letters
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List.generate(
@@ -273,13 +255,13 @@ class _SplashScreenState extends State<SplashScreen>
                                   shadows: isRevealed
                                       ? [
                                           Shadow(
-                                            color: appthemecolor.withValues(
-                                                alpha: 0.8),
+                                            color: appthemecolor
+                                                .withValues(alpha: 0.8),
                                             blurRadius: 20,
                                           ),
                                           Shadow(
-                                            color: goldLight.withValues(
-                                                alpha: 0.4),
+                                            color: goldLight
+                                                .withValues(alpha: 0.4),
                                             blurRadius: 40,
                                           ),
                                         ]
@@ -294,11 +276,11 @@ class _SplashScreenState extends State<SplashScreen>
 
                     const SizedBox(height: 8),
 
-                    // Gold underline that draws itself
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 800),
-                      width:
-                          _revealedLetters >= _logoText.length ? R.wp(55) : 0,
+                      width: _revealedLetters >= _logoText.length
+                          ? R.wp(55)
+                          : 0,
                       height: 1.5,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
@@ -322,7 +304,6 @@ class _SplashScreenState extends State<SplashScreen>
 
                     const SizedBox(height: 20),
 
-                    // Typewriter tagline
                     if (_showTagline)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -336,15 +317,15 @@ class _SplashScreenState extends State<SplashScreen>
                               fontWeight: FontWeight.w300,
                             ),
                           ),
-                          // Blinking cursor
                           AnimatedBuilder(
                             animation: _grainController,
                             builder: (context, child) {
                               return Opacity(
-                                opacity:
-                                    (_grainController.value * 10).floor().isEven
-                                        ? 1.0
-                                        : 0.0,
+                                opacity: (_grainController.value * 10)
+                                        .floor()
+                                        .isEven
+                                    ? 1.0
+                                    : 0.0,
                                 child: Container(
                                   width: 2,
                                   height: R.sp(14),
@@ -359,7 +340,7 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
               ),
 
-              // Projector light effect from top
+              // Projector light effect
               if (_scanController.value > 0)
                 Positioned(
                   top: 0,
@@ -388,7 +369,6 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-// Film grain custom painter
 class FilmGrainPainter extends CustomPainter {
   final double animationValue;
   final Random _random = Random();
@@ -401,7 +381,6 @@ class FilmGrainPainter extends CustomPainter {
       ..color = Colors.white.withValues(alpha: 0.015)
       ..strokeWidth = 1;
 
-    // Draw random grain dots
     final grainCount = (size.width * size.height / 800).toInt();
     for (int i = 0; i < grainCount; i++) {
       final x = _random.nextDouble() * size.width;
@@ -428,6 +407,7 @@ class OpeningScreen extends StatelessWidget {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.active) {
             if (snapshot.hasData) {
+              // User logged in → go to home
               return Navbar(name: name);
             } else if (snapshot.hasError) {
               return Center(
@@ -445,7 +425,8 @@ class OpeningScreen extends StatelessWidget {
               ),
             );
           }
-          return const StartScreen();
+          // User not logged in → go to SignIn directly
+          return const LoginIn();
         },
       ),
     );

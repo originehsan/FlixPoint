@@ -1,13 +1,15 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:gap/gap.dart';
+import 'package:movieticket/auth/signup.dart';
 import 'package:movieticket/methods/authfunctions.dart';
 import 'package:movieticket/provider/user_provider.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/navbar.dart';
+import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/pickimage.dart';
 import 'package:movieticket/utils/responsive.dart';
-import 'package:movieticket/utils/page_transitions.dart';
+import 'package:movieticket/widgets/flixpoint_logo.dart';
 import 'package:movieticket/widgets/text_field.dart';
 import 'package:provider/provider.dart';
 
@@ -76,39 +78,7 @@ class _LoginInState extends State<LoginIn> {
       appBar: AppBar(
         backgroundColor: mobileBackgroundColor,
         elevation: 0,
-        leading: GestureDetector(
-          onTap: () => Navigator.pop(context),
-          child: Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: surfaceColor,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: appthemecolor.withValues(alpha: 0.3),
-              ),
-            ),
-            child: const Icon(
-              Icons.arrow_back_ios_new,
-              color: appthemecolor,
-              size: 16,
-            ),
-          ),
-        ),
-        title: ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [appthemecolor, goldLight],
-          ).createShader(bounds),
-          child: Text(
-            'Sign In',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: R.sp(20),
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-        centerTitle: true,
+        automaticallyImplyLeading: false,
       ),
       body: Center(
         child: ConstrainedBox(
@@ -119,62 +89,28 @@ class _LoginInState extends State<LoginIn> {
             ),
             child: Column(
               children: [
-                SizedBox(height: R.hp(8)),
+                Gap(R.hp(6)),
 
-                // Logo
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: appthemecolor.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: appthemecolor.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: SvgPicture.asset(
-                    'assets/appicon.svg',
-                    height: R.isPhone ? 50 : 70,
-                  ),
+                // FlixPoint animated logo
+                const FlixPointLogo(
+                  animate: true,
+                  fontSize: 36,
+                  showTagline: true,
+                  tagline: 'Welcome back!',
                 ),
 
-                SizedBox(height: R.px(16)),
-
-                // App name
-                ShaderMask(
-                  shaderCallback: (bounds) => const LinearGradient(
-                    colors: [appthemecolor, goldLight],
-                  ).createShader(bounds),
-                  child: Text(
-                    'FlixPoint',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: R.sp(28),
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-
-                SizedBox(height: R.px(8)),
-
-                Text(
-                  'Welcome back!',
-                  style: TextStyle(
-                    color: secondaryColor,
-                    fontSize: R.sp(14),
-                  ),
-                ),
-
-                SizedBox(height: R.px(40)),
+                Gap(R.px(48)),
 
                 // Email field
                 TextFieldInput(
                   textEditingController: _emailController,
                   hintText: 'Enter your email',
                   textInputType: TextInputType.emailAddress,
+                  prefixIcon: Icons.email_outlined,
+                  autofillHints: const [AutofillHints.email],
                 ),
 
-                SizedBox(height: R.px(16)),
+                Gap(R.px(16)),
 
                 // Password field
                 TextFieldInput(
@@ -182,51 +118,95 @@ class _LoginInState extends State<LoginIn> {
                   hintText: 'Enter your password',
                   textInputType: TextInputType.text,
                   isPass: true,
+                  prefixIcon: Icons.lock_outline_rounded,
+                  autofillHints: const [AutofillHints.password],
                 ),
 
-                SizedBox(height: R.px(30)),
+                Gap(R.px(32)),
 
                 // Sign in button
-                GestureDetector(
-                  onTap: _isLoading ? null : _loginUser,
-                  child: Container(
-                    height: 56,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [appthemecolor, goldDark],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: appthemecolor.withValues(alpha: 0.4),
-                          blurRadius: 16,
-                          spreadRadius: 2,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    alignment: Alignment.center,
-                    child: _isLoading
-                        ? const CircularProgressIndicator(
-                            color: Colors.black,
-                            strokeWidth: 2,
-                          )
-                        : Text(
-                            'Sign In',
-                            style: TextStyle(
-                              color: Colors.black,
-                              fontSize: R.sp(16),
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                            ),
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.3, end: 1.0),
+                  duration: const Duration(seconds: 2),
+                  curve: Curves.easeInOut,
+                  builder: (context, value, child) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: appthemecolor.withValues(alpha: 0.3 * value),
+                            blurRadius: 20 * value,
+                            spreadRadius: 2 * value,
                           ),
+                        ],
+                      ),
+                      child: child,
+                    );
+                  },
+                  child: GestureDetector(
+                    onTap: _isLoading ? null : _loginUser,
+                    child: Container(
+                      height: 56,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [appthemecolor, goldDark],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      alignment: Alignment.center,
+                      child: _isLoading
+                          ? const CircularProgressIndicator(
+                              color: Colors.black,
+                              strokeWidth: 2,
+                            )
+                          : Text(
+                              'Sign In',
+                              style: TextStyle(
+                                color: Colors.black,
+                                fontSize: R.sp(16),
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                    ),
                   ),
                 ),
 
-                SizedBox(height: R.hp(8)),
+                Gap(R.px(24)),
+
+                // Create account link
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Don't have an account? ",
+                      style: TextStyle(
+                        color: secondaryColor,
+                        fontSize: R.sp(13),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pushReplacement(
+                        context,
+                        AppRoutes.authRoute(const SignUp()),
+                      ),
+                      child: Text(
+                        'Sign Up',
+                        style: TextStyle(
+                          color: appthemecolor,
+                          fontSize: R.sp(13),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                Gap(R.hp(6)),
               ],
             ),
           ),

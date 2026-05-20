@@ -68,7 +68,7 @@ class MovieCardWidget extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Optional badge (SOON, HOT, For You)
+                  // Optional badge
                   if (badgeText != null)
                     Positioned(
                       top: 8,
@@ -105,7 +105,7 @@ class MovieCardWidget extends StatelessWidget {
               ),
             ),
 
-            Gap(6),
+            const Gap(6),
 
             // Title below poster
             Text(
@@ -119,9 +119,9 @@ class MovieCardWidget extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
 
-            Gap(2),
+            const Gap(2),
 
-            // Rating below title
+            // Rating and year
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [

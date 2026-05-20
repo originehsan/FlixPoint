@@ -1,15 +1,20 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:confetti/confetti.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:gap/gap.dart';
+import 'package:lottie/lottie.dart';
 import 'package:movieticket/models/tmdb_movie.dart';
 import 'package:movieticket/services/tmdb_service.dart';
+import 'package:movieticket/utils/booking_utils.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/responsive.dart';
+import 'package:movieticket/widgets/dashed_divider.dart';
+import 'package:movieticket/widgets/ticket_detail_widget.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 
@@ -24,6 +29,8 @@ class TicketScreen extends StatefulWidget {
   final String time;
   final int amount;
   final String orderId;
+  final Map<String, String> seatPassengers;
+  final String passengerEmail;
 
   const TicketScreen({
     super.key,
@@ -37,6 +44,8 @@ class TicketScreen extends StatefulWidget {
     required this.time,
     required this.amount,
     required this.orderId,
+    this.seatPassengers = const {},
+    this.passengerEmail = '',
   });
 
   @override
@@ -45,193 +54,264 @@ class TicketScreen extends StatefulWidget {
 
 class _TicketScreenState extends State<TicketScreen> {
   final TmdbService _tmdbService = TmdbService();
-  late ConfettiController _confettiController;
-  bool _isDownloading = false;
+  bool _isSharing = false;
+  bool _lottieComplete = false;
 
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(
-      duration: const Duration(seconds: 4),
-    );
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) _confettiController.play();
+    Future.delayed(const Duration(milliseconds: 2800), () {
+      if (mounted) setState(() => _lottieComplete = true);
     });
   }
 
-  @override
-  void dispose() {
-    _confettiController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _downloadTicket() async {
-    setState(() => _isDownloading = true);
+  Future<void> _shareTicket() async {
+    setState(() => _isSharing = true);
     try {
-      final pdf = pw.Document();
-      pdf.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          build: (pw.Context context) {
-            return pw.Container(
-              padding: const pw.EdgeInsets.all(24),
-              decoration: pw.BoxDecoration(
-                border: pw.Border.all(
-                  color: PdfColors.amber,
-                  width: 2,
-                ),
-                borderRadius: const pw.BorderRadius.all(
-                  pw.Radius.circular(12),
-                ),
-              ),
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                            'FlixPoint',
-                            style: pw.TextStyle(
-                              fontSize: 32,
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColors.amber,
-                            ),
-                          ),
-                          pw.Text(
-                            'Movie Ticket',
-                            style: pw.TextStyle(
-                              fontSize: 14,
-                              color: PdfColors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                      pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: pw.BoxDecoration(
-                          color: PdfColors.amber,
-                          borderRadius: const pw.BorderRadius.all(
-                            pw.Radius.circular(6),
-                          ),
-                        ),
-                        child: pw.Text(
-                          'CONFIRMED',
-                          style: pw.TextStyle(
-                            fontSize: 12,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.black,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  pw.Divider(color: PdfColors.amber),
-                  pw.SizedBox(height: 10),
-                  pw.Text(
-                    widget.movie.title,
-                    style: pw.TextStyle(
-                      fontSize: 24,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 20),
-                  _pdfRow('Order ID', '#${widget.orderId}'),
-                  _pdfRow('Cinema', widget.theatreName),
-                  _pdfRow('Address', widget.theatreAddress),
-                  _pdfRow('Date', widget.date),
-                  _pdfRow('Time', widget.time),
-                  _pdfRow('Seats', widget.seats.join(', ')),
-                  _pdfRow(
-                    'Tickets',
-                    '${widget.seats.length} ticket${widget.seats.length > 1 ? 's' : ''}',
-                  ),
-                  pw.Divider(color: PdfColors.amber),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                    children: [
-                      pw.Text(
-                        'Total Amount',
-                        style: pw.TextStyle(
-                          fontSize: 16,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.Text(
-                        '\u20B9${widget.amount}',
-                        style: pw.TextStyle(
-                          fontSize: 22,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.amber,
-                        ),
-                      ),
-                    ],
-                  ),
-                  pw.SizedBox(height: 24),
-                  pw.Center(
-                    child: pw.BarcodeWidget(
-                      barcode: pw.Barcode.qrCode(),
-                      data: widget.bookingId,
-                      width: 140,
-                      height: 140,
-                    ),
-                  ),
-                  pw.SizedBox(height: 8),
-                  pw.Center(
-                    child: pw.Text(
-                      'Booking ID: ${widget.bookingId}',
-                      style: pw.TextStyle(
-                        fontSize: 10,
-                        color: PdfColors.grey,
-                      ),
-                    ),
-                  ),
-                  pw.SizedBox(height: 20),
-                  pw.Center(
-                    child: pw.Text(
-                      'Thank you for choosing FlixPoint!',
-                      style: pw.TextStyle(
-                        fontSize: 12,
-                        color: PdfColors.amber,
-                        fontStyle: pw.FontStyle.italic,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-      );
+      // Build passengers text for sharing
+      final passengersText = widget.seatPassengers.entries
+          .map((e) => '  ${e.key} → ${e.value}')
+          .join('\n');
 
-      final dir = await getTemporaryDirectory();
-      final file = File(
-        '${dir.path}/FlixPoint_${widget.orderId}.pdf',
-      );
-      await file.writeAsBytes(await pdf.save());
-      await SharePlus.instance.share(
-        ShareParams(
-          files: [XFile(file.path)],
-          text: 'My FlixPoint ticket for ${widget.movie.title}',
-        ),
-      );
+      final shareText =
+          'FlixPoint Ticket — ${widget.movie.title}\n\n'
+          'Cinema: ${widget.theatreName}\n'
+          'Date: ${widget.date}\n'
+          'Time: ${widget.time}\n'
+          'Seats: ${widget.seats.join(', ')}\n'
+          '${passengersText.isNotEmpty ? 'Passengers:\n$passengersText\n' : ''}'
+          'Order ID: #${widget.orderId}\n'
+          'Amount: ₹${widget.amount}';
+
+      if (kIsWeb) {
+        // Web: share text only
+        await SharePlus.instance.share(
+          ShareParams(text: shareText),
+        );
+      } else {
+        // Mobile: generate PDF and share
+        final pdf = pw.Document();
+        pdf.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            build: (pw.Context context) {
+              return pw.Container(
+                padding: const pw.EdgeInsets.all(24),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(
+                    color: PdfColors.amber,
+                    width: 2,
+                  ),
+                  borderRadius: const pw.BorderRadius.all(
+                    pw.Radius.circular(12),
+                  ),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment:
+                      pw.CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    pw.Row(
+                      mainAxisAlignment:
+                          pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Column(
+                          crossAxisAlignment:
+                              pw.CrossAxisAlignment.start,
+                          children: [
+                            pw.Text(
+                              'FlixPoint',
+                              style: pw.TextStyle(
+                                fontSize: 32,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.amber,
+                              ),
+                            ),
+                            pw.Text(
+                              'Movie Ticket',
+                              style: const pw.TextStyle(
+                                fontSize: 14,
+                                color: PdfColors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                        pw.Container(
+                          padding:
+                              const pw.EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: pw.BoxDecoration(
+                            color: PdfColors.green,
+                            borderRadius:
+                                const pw.BorderRadius.all(
+                              pw.Radius.circular(6),
+                            ),
+                          ),
+                          child: pw.Text(
+                            'CONFIRMED',
+                            style: pw.TextStyle(
+                              fontSize: 12,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.white,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    pw.Divider(color: PdfColors.amber),
+                    pw.SizedBox(height: 10),
+
+                    // Movie title
+                    pw.Text(
+                      widget.movie.title,
+                      style: pw.TextStyle(
+                        fontSize: 24,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    pw.SizedBox(height: 20),
+
+                    // Booking details
+                    _pdfRow('Order ID', '#${widget.orderId}'),
+                    _pdfRow('Cinema', widget.theatreName),
+                    _pdfRow('Address', widget.theatreAddress),
+                    _pdfRow('Date', widget.date),
+                    _pdfRow('Time', widget.time),
+                    _pdfRow('Seats', widget.seats.join(', ')),
+
+                    // Passengers per seat
+                    if (widget.seatPassengers.isNotEmpty) ...[
+                      pw.SizedBox(height: 8),
+                      pw.Text(
+                        'Passengers:',
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          color: PdfColors.grey,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      ...widget.seatPassengers.entries
+                          .map(
+                            (e) => pw.Padding(
+                              padding:
+                                  const pw.EdgeInsets.only(
+                                bottom: 4,
+                                left: 8,
+                              ),
+                              child: pw.Text(
+                                '${e.key}  →  ${e.value}',
+                                style: pw.TextStyle(
+                                  fontSize: 12,
+                                  fontWeight:
+                                      pw.FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ],
+
+                    if (widget.passengerEmail.isNotEmpty) ...[
+                      pw.SizedBox(height: 4),
+                      _pdfRow('Email', widget.passengerEmail),
+                    ],
+
+                    pw.Divider(color: PdfColors.amber),
+
+                    // Total
+                    pw.Row(
+                      mainAxisAlignment:
+                          pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          'Total Amount',
+                          style: pw.TextStyle(
+                            fontSize: 16,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
+                        ),
+                        pw.Text(
+                          '₹${widget.amount}',
+                          style: pw.TextStyle(
+                            fontSize: 22,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.amber,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    pw.SizedBox(height: 24),
+
+                    // QR Code
+                    pw.Center(
+                      child: pw.BarcodeWidget(
+                        barcode: pw.Barcode.qrCode(),
+                        data: widget.bookingId,
+                        width: 140,
+                        height: 140,
+                      ),
+                    ),
+                    pw.SizedBox(height: 8),
+                    pw.Center(
+                      child: pw.Text(
+                        'Booking ID: ${widget.bookingId}',
+                        style: const pw.TextStyle(
+                          fontSize: 10,
+                          color: PdfColors.grey,
+                        ),
+                      ),
+                    ),
+                    pw.SizedBox(height: 20),
+                    pw.Center(
+                      child: pw.Text(
+                        'Thank you for choosing FlixPoint!',
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          color: PdfColors.amber,
+                          fontStyle: pw.FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+
+        // Save PDF to temp directory
+        final dir = await getTemporaryDirectory();
+        final file = File(
+          '${dir.path}/FlixPoint_${widget.orderId}.pdf',
+        );
+        await file.writeAsBytes(await pdf.save());
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(file.path)],
+            text: shareText,
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString()}'),
+            content: Text(
+              'Error sharing ticket: ${e.toString()}',
+            ),
             backgroundColor: errorColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
     }
-    if (mounted) setState(() => _isDownloading = false);
+    if (mounted) setState(() => _isSharing = false);
   }
 
   pw.Widget _pdfRow(String label, String value) {
@@ -244,7 +324,7 @@ class _TicketScreenState extends State<TicketScreen> {
             width: 100,
             child: pw.Text(
               label,
-              style: pw.TextStyle(
+              style: const pw.TextStyle(
                 color: PdfColors.grey,
                 fontSize: 12,
               ),
@@ -267,6 +347,20 @@ class _TicketScreenState extends State<TicketScreen> {
   @override
   Widget build(BuildContext context) {
     R.init(context);
+
+    final status = BookingUtils.getStatus(
+      widget.date,
+      widget.time,
+    );
+    final statusColor = BookingUtils.getStatusColor(status);
+    final statusIcon = BookingUtils.getStatusIcon(status);
+    final isExpired = status == BookingStatus.expired;
+    final isToday = status == BookingStatus.today;
+    final remaining = BookingUtils.timeRemaining(
+      widget.date,
+      widget.time,
+    );
+
     return Scaffold(
       backgroundColor: mobileBackgroundColor,
       appBar: AppBar(
@@ -288,107 +382,61 @@ class _TicketScreenState extends State<TicketScreen> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          GestureDetector(
-            onTap: () {
-              Navigator.of(context).popUntil((route) => route.isFirst);
-            },
-            child: Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: surfaceColor,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: appthemecolor.withValues(alpha: 0.3),
-                ),
-              ),
-              child: const Icon(
-                Icons.home,
-                color: appthemecolor,
-                size: 18,
-              ),
-            ),
-          ),
-        ],
       ),
-      body: Stack(
-        children: [
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              colors: const [
-                appthemecolor,
-                goldLight,
-                Colors.white,
-                goldDark,
-              ],
-              numberOfParticles: R.isPhone ? 25 : 40,
-              gravity: 0.25,
-              emissionFrequency: 0.05,
-            ),
-          ),
-          Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: R.maxWidth),
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(R.horizontalPadding),
-                child: Column(
-                  children: [
-                    _buildSuccessHeader(),
-                    const SizedBox(height: 24),
-                    _buildTicketCard(),
-                    const SizedBox(height: 20),
-                    _buildDownloadButton(),
-                    const SizedBox(height: 12),
-                    _buildHomeButton(),
-                    const SizedBox(height: 30),
-                  ],
+      body: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: R.maxWidth),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.all(R.horizontalPadding),
+            child: Column(
+              children: [
+                // Lottie header
+                _buildLottieHeader(),
+
+                // Ticket slides in after lottie
+                AnimatedOpacity(
+                  duration: const Duration(milliseconds: 600),
+                  opacity: _lottieComplete ? 1.0 : 0.0,
+                  child: AnimatedSlide(
+                    duration: const Duration(milliseconds: 600),
+                    offset: _lottieComplete
+                        ? Offset.zero
+                        : const Offset(0, 0.3),
+                    curve: Curves.easeOut,
+                    child: Column(
+                      children: [
+                        _buildTicketCard(
+                          statusColor,
+                          statusIcon,
+                          isExpired,
+                          isToday,
+                          remaining,
+                        ),
+                        const Gap(24),
+                        _buildActionButtons(),
+                        const Gap(30),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildSuccessHeader() {
+  Widget _buildLottieHeader() {
     return Column(
       children: [
-        Container(
-          width: R.isPhone ? 80 : 100,
-          height: R.isPhone ? 80 : 100,
-          decoration: BoxDecoration(
-            color: successColor.withValues(alpha: 0.15),
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: successColor,
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: successColor.withValues(alpha: 0.3),
-                blurRadius: 20,
-                spreadRadius: 2,
-              ),
-            ],
+        SizedBox(
+          height: R.isPhone ? 180 : 220,
+          child: Lottie.asset(
+            'assets/lottie/success.json',
+            repeat: false,
           ),
-          child: Icon(
-            Icons.check_rounded,
-            color: successColor,
-            size: R.isPhone ? 40 : 50,
-          ),
-        )
-            .animate()
-            .scale(
-              duration: 600.ms,
-              curve: Curves.elasticOut,
-            )
-            .fadeIn(),
-        const SizedBox(height: 16),
+        ),
         Text(
           'Booking Confirmed!',
           style: TextStyle(
@@ -397,38 +445,46 @@ class _TicketScreenState extends State<TicketScreen> {
             fontWeight: FontWeight.w800,
             letterSpacing: 0.5,
           ),
-        ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
-        const SizedBox(height: 6),
+        ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2),
+        const Gap(6),
         Text(
-          'Your ticket is ready to use',
+          'Enjoy your movie experience',
           style: TextStyle(
             color: secondaryColor,
             fontSize: R.sp(14),
           ),
-        ).animate().fadeIn(delay: 400.ms),
+        ).animate().fadeIn(delay: 700.ms),
+        const Gap(24),
       ],
     );
   }
 
-  Widget _buildTicketCard() {
+  Widget _buildTicketCard(
+    Color statusColor,
+    IconData statusIcon,
+    bool isExpired,
+    bool isToday,
+    String remaining,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: appthemecolor.withValues(alpha: 0.4),
-          width: 1,
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: appthemecolor.withValues(alpha: 0.1),
-            blurRadius: 20,
+            color: appthemecolor.withValues(alpha: 0.15),
+            blurRadius: 24,
             spreadRadius: 2,
           ),
         ],
       ),
       child: Column(
         children: [
+          // Movie backdrop
           ClipRRect(
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(20),
@@ -437,12 +493,14 @@ class _TicketScreenState extends State<TicketScreen> {
             child: Stack(
               children: [
                 CachedNetworkImage(
-                  imageUrl:
-                      _tmdbService.getBackdropUrl(widget.movie.backdropPath),
+                  imageUrl: _tmdbService.getBackdropUrl(
+                    widget.movie.backdropPath,
+                  ),
                   width: double.infinity,
                   height: R.isPhone ? 160 : 200,
                   fit: BoxFit.cover,
-                  errorWidget: (context, url, error) => Container(
+                  errorWidget: (context, url, error) =>
+                      Container(
                     height: R.isPhone ? 160 : 200,
                     color: surfaceColor2,
                     child: const Icon(
@@ -458,27 +516,36 @@ class _TicketScreenState extends State<TicketScreen> {
                     gradient: heroGradient,
                   ),
                 ),
+                // Confirmed badge
                 Positioned(
                   top: 12,
                   right: 12,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+                      horizontal: 12,
+                      vertical: 6,
                     ),
                     decoration: BoxDecoration(
                       color: successColor,
                       borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: successColor
+                              .withValues(alpha: 0.4),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(
-                          Icons.check_circle,
+                          Icons.check_circle_rounded,
                           color: Colors.white,
                           size: 12,
                         ),
-                        const SizedBox(width: 4),
+                        const Gap(4),
                         Text(
                           'Confirmed',
                           style: TextStyle(
@@ -491,6 +558,7 @@ class _TicketScreenState extends State<TicketScreen> {
                     ),
                   ),
                 ),
+                // Movie title
                 Positioned(
                   bottom: 12,
                   left: 16,
@@ -515,84 +583,275 @@ class _TicketScreenState extends State<TicketScreen> {
               ],
             ),
           ),
-          _buildDashedDivider(),
+
+          const DashedDivider(),
+
           Padding(
             padding: EdgeInsets.all(R.px(16)),
             child: Column(
               children: [
+                // Cinema name - PROMINENT
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: appthemecolor.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: appthemecolor
+                          .withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.theaters_rounded,
+                        color: appthemecolor,
+                        size: 18,
+                      ),
+                      const Gap(10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.theatreName,
+                              style: TextStyle(
+                                color: primaryColor,
+                                fontSize: R.sp(14),
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            if (widget
+                                .theatreAddress.isNotEmpty)
+                              Text(
+                                widget.theatreAddress,
+                                style: TextStyle(
+                                  color: secondaryColor,
+                                  fontSize: R.sp(10),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const Gap(14),
+
+                // Date and time
                 Row(
                   children: [
                     Expanded(
-                      child: _ticketDetail(
-                        Icons.location_on,
-                        'Cinema',
-                        widget.theatreName,
+                      child: TicketDetailWidget(
+                        icon: Icons.calendar_today_rounded,
+                        label: 'Date',
+                        value: widget.date,
                       ),
                     ),
                     Expanded(
-                      child: _ticketDetail(
-                        Icons.calendar_today,
-                        'Date',
-                        widget.date,
+                      child: TicketDetailWidget(
+                        icon: Icons.access_time_rounded,
+                        label: 'Time',
+                        value: widget.time,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+
+                const Gap(14),
+
+                // Order ID and amount
                 Row(
                   children: [
                     Expanded(
-                      child: _ticketDetail(
-                        Icons.access_time,
-                        'Time',
-                        widget.time,
+                      child: TicketDetailWidget(
+                        icon: Icons.confirmation_num_rounded,
+                        label: 'Order ID',
+                        value: '#${widget.orderId}',
                       ),
                     ),
                     Expanded(
-                      child: _ticketDetail(
-                        Icons.event_seat,
-                        'Seats',
-                        widget.seats.join(', '),
+                      child: TicketDetailWidget(
+                        icon: Icons.currency_rupee_rounded,
+                        label: 'Amount',
+                        value: '₹${widget.amount}',
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ticketDetail(
-                        Icons.confirmation_num,
-                        'Order ID',
-                        '#${widget.orderId}',
+
+                const Gap(14),
+
+                // Seat passengers
+                if (widget.seatPassengers.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: appthemecolor
+                          .withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: appthemecolor
+                            .withValues(alpha: 0.15),
                       ),
                     ),
-                    Expanded(
-                      child: _ticketDetail(
-                        Icons.payment,
-                        'Amount',
-                        '\u20B9${widget.amount}',
-                      ),
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.people_rounded,
+                              color: appthemecolor,
+                              size: 14,
+                            ),
+                            const Gap(6),
+                            Text(
+                              'Passengers',
+                              style: TextStyle(
+                                color: secondaryColor,
+                                fontSize: R.sp(11),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Gap(10),
+                        ...widget.seatPassengers.entries
+                            .map(
+                              (entry) => Padding(
+                                padding:
+                                    const EdgeInsets.only(
+                                  bottom: 6,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding:
+                                          const EdgeInsets
+                                              .symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration:
+                                          BoxDecoration(
+                                        color: appthemecolor
+                                            .withValues(
+                                          alpha: 0.15,
+                                        ),
+                                        borderRadius:
+                                            BorderRadius
+                                                .circular(6),
+                                        border: Border.all(
+                                          color: appthemecolor
+                                              .withValues(
+                                            alpha: 0.3,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        entry.key,
+                                        style: TextStyle(
+                                          color: appthemecolor,
+                                          fontSize: R.sp(10),
+                                          fontWeight:
+                                              FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                    const Gap(8),
+                                    const Icon(
+                                      Icons
+                                          .arrow_forward_rounded,
+                                      color: secondaryColor,
+                                      size: 12,
+                                    ),
+                                    const Gap(8),
+                                    Expanded(
+                                      child: Text(
+                                        entry.value,
+                                        style: TextStyle(
+                                          color: primaryColor,
+                                          fontSize: R.sp(12),
+                                          fontWeight:
+                                              FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        if (widget
+                            .passengerEmail.isNotEmpty) ...[
+                          Divider(
+                            color: appthemecolor
+                                .withValues(alpha: 0.1),
+                            height: 12,
+                          ),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.email_outlined,
+                                color: secondaryColor,
+                                size: 12,
+                              ),
+                              const Gap(6),
+                              Text(
+                                widget.passengerEmail,
+                                style: TextStyle(
+                                  color: secondaryColor,
+                                  fontSize: R.sp(11),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  const Gap(14),
+                ],
               ],
             ),
           ),
-          _buildDashedDivider(),
+
+          const DashedDivider(),
+
+          // QR Code
           Padding(
             padding: EdgeInsets.all(R.px(16)),
             child: Column(
               children: [
-                Text(
-                  'Scan QR at Cinema Entry',
-                  style: TextStyle(
-                    color: secondaryColor,
-                    fontSize: R.sp(12),
-                    letterSpacing: 0.5,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.qr_code_scanner_rounded,
+                      color: appthemecolor,
+                      size: 16,
+                    ),
+                    const Gap(8),
+                    Text(
+                      'Scan QR at Cinema Entry',
+                      style: TextStyle(
+                        color: secondaryColor,
+                        fontSize: R.sp(12),
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
+                const Gap(16),
                 Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
@@ -604,8 +863,9 @@ class _TicketScreenState extends State<TicketScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: appthemecolor.withValues(alpha: 0.3),
-                        blurRadius: 16,
+                        color: appthemecolor
+                            .withValues(alpha: 0.3),
+                        blurRadius: 20,
                         spreadRadius: 2,
                       ),
                     ],
@@ -625,7 +885,7 @@ class _TicketScreenState extends State<TicketScreen> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const Gap(10),
                 Text(
                   widget.bookingId,
                   style: TextStyle(
@@ -635,162 +895,153 @@ class _TicketScreenState extends State<TicketScreen> {
                     fontFamily: 'monospace',
                   ),
                 ),
+                const Gap(10),
+
+                // Show status badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: statusColor.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        statusIcon,
+                        color: statusColor,
+                        size: 14,
+                      ),
+                      const Gap(6),
+                      Text(
+                        isExpired
+                            ? 'Show has ended'
+                            : isToday
+                                ? 'Show today — $remaining'
+                                : 'Show $remaining',
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: R.sp(11),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
         ],
       ),
-    )
-        .animate()
-        .slideY(
-          begin: 0.3,
-          duration: 600.ms,
-          curve: Curves.easeOut,
-        )
-        .fadeIn(delay: 200.ms);
+    );
   }
 
-  Widget _ticketDetail(IconData icon, String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildActionButtons() {
+    return Row(
       children: [
-        Row(
-          children: [
-            Icon(icon, color: appthemecolor, size: R.sp(12)),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: secondaryColor,
-                fontSize: R.sp(10),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            color: primaryColor,
-            fontSize: R.sp(12),
-            fontWeight: FontWeight.w700,
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDashedDivider() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: List.generate(
-          40,
-          (index) => Expanded(
+        // Share Ticket
+        Expanded(
+          child: GestureDetector(
+            onTap: _isSharing ? null : _shareTicket,
             child: Container(
-              height: 1,
-              color: index % 2 == 0
-                  ? appthemecolor.withValues(alpha: 0.3)
-                  : Colors.transparent,
+              height: 56,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [appthemecolor, goldDark],
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                ),
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: appthemecolor.withValues(alpha: 0.4),
+                    blurRadius: 16,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: _isSharing
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.black,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.share_rounded,
+                          color: Colors.black,
+                          size: 18,
+                        ),
+                        const Gap(8),
+                        Text(
+                          'Share Ticket',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: R.sp(14),
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ),
         ),
-      ),
-    );
-  }
 
-  Widget _buildDownloadButton() {
-    return GestureDetector(
-      onTap: _isDownloading ? null : _downloadTicket,
-      child: Container(
-        height: 58,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [appthemecolor, goldDark],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-          borderRadius: BorderRadius.circular(30),
-          boxShadow: [
-            BoxShadow(
-              color: appthemecolor.withValues(alpha: 0.4),
-              blurRadius: 16,
-              spreadRadius: 2,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        alignment: Alignment.center,
-        child: _isDownloading
-            ? const CircularProgressIndicator(
-                color: Colors.black,
-                strokeWidth: 2,
-              )
-            : Row(
+        const Gap(12),
+
+        // Done
+        Expanded(
+          child: GestureDetector(
+            onTap: () => Navigator.of(context)
+                .popUntil((route) => route.isFirst),
+            child: Container(
+              height: 56,
+              decoration: BoxDecoration(
+                color: surfaceColor,
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(
+                  color: appthemecolor,
+                  width: 1.5,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(
-                    Icons.download_rounded,
-                    color: Colors.black,
-                    size: 22,
+                    Icons.check_circle_rounded,
+                    color: appthemecolor,
+                    size: 18,
                   ),
-                  const SizedBox(width: 8),
+                  const Gap(8),
                   Text(
-                    'Download & Share Ticket',
+                    'Done',
                     style: TextStyle(
-                      color: Colors.black,
-                      fontSize: R.sp(15),
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 0.5,
+                      color: appthemecolor,
+                      fontSize: R.sp(14),
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
               ),
-      ),
-    ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2);
-  }
-
-  Widget _buildHomeButton() {
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).popUntil((route) => route.isFirst);
-      },
-      child: Container(
-        height: 58,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(
-            color: appthemecolor,
-            width: 1.5,
+            ),
           ),
         ),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.home_rounded,
-              color: appthemecolor,
-              size: 22,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Back to Home',
-              style: TextStyle(
-                color: appthemecolor,
-                fontSize: R.sp(15),
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    ).animate().fadeIn(delay: 700.ms).slideY(begin: 0.2);
+      ],
+    ).animate().fadeIn(delay: 800.ms).slideY(begin: 0.2);
   }
 }

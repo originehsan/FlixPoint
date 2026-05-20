@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:gap/gap.dart';
 import 'package:movieticket/models/tmdb_movie.dart';
 import 'package:movieticket/screens/seatselection.dart';
 import 'package:movieticket/services/tmdb_service.dart';
@@ -10,6 +11,7 @@ import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/constants.dart';
 import 'package:movieticket/utils/pickimage.dart';
+import 'package:movieticket/widgets/movie_card_widget.dart';
 import 'package:readmore/readmore.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -105,6 +107,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildMovieInfo(),
+                    if (_trailerKey != null) _buildTrailerButton(),
                     _buildStoryline(),
                     _buildCast(),
                     if (_similarMovies.isNotEmpty) _buildSimilarMovies(),
@@ -114,7 +117,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                       _buildCinemaSection(),
                       _buildBookButton(),
                     ],
-                    const SizedBox(height: 30),
+                    const Gap(30),
                   ],
                 ),
               ),
@@ -154,29 +157,6 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
           ),
         ),
       ),
-      actions: [
-        Padding(
-          padding: const EdgeInsets.all(8),
-          child: GestureDetector(
-            onTap: _shareMovie,
-            child: Container(
-              decoration: BoxDecoration(
-                color: mobileBackgroundColor.withValues(alpha: 0.7),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: appthemecolor.withValues(alpha: 0.5),
-                ),
-              ),
-              padding: const EdgeInsets.all(8),
-              child: const Icon(
-                Icons.share_rounded,
-                color: appthemecolor,
-                size: 18,
-              ),
-            ),
-          ),
-        ),
-      ],
       flexibleSpace: FlexibleSpaceBar(
         stretchModes: const [
           StretchMode.zoomBackground,
@@ -214,6 +194,38 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                 ),
               ),
             ),
+
+            // Share button ON the poster (top right)
+            Positioned(
+              top: 50,
+              right: 16,
+              child: GestureDetector(
+                onTap: _shareMovie,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: mobileBackgroundColor.withValues(alpha: 0.7),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: appthemecolor.withValues(alpha: 0.5),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: appthemecolor.withValues(alpha: 0.2),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(10),
+                  child: const Icon(
+                    Icons.share_rounded,
+                    color: appthemecolor,
+                    size: 18,
+                  ),
+                ),
+              ),
+            ),
+
             Positioned(
               bottom: 20,
               left: R.horizontalPadding,
@@ -236,7 +248,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const Gap(8),
                   Row(
                     children: [
                       Container(
@@ -256,7 +268,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                               color: Colors.black,
                               size: 14,
                             ),
-                            const SizedBox(width: 4),
+                            const Gap(4),
                             Text(
                               widget.movie.formattedRating,
                               style: TextStyle(
@@ -268,14 +280,14 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const Gap(8),
                       if (_runtime.isNotEmpty)
                         _infoBadge(Icons.access_time, _runtime),
-                      const SizedBox(width: 8),
+                      const Gap(8),
                       _infoBadge(Icons.calendar_today, widget.movie.year),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const Gap(8),
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
@@ -328,7 +340,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, color: appthemecolor, size: 12),
-          const SizedBox(width: 4),
+          const Gap(4),
           Text(
             text,
             style: TextStyle(
@@ -360,7 +372,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
             ],
           ),
         ),
-        const SizedBox(width: 10),
+        const Gap(10),
         Text(
           title,
           style: TextStyle(
@@ -374,6 +386,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
     );
   }
 
+  // Info chips row - no trailer here anymore
   Widget _buildMovieInfo() {
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -382,64 +395,125 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
       ),
       child: Row(
         children: [
-          _infoChip(Icons.star_rounded, 'Rating', widget.movie.formattedRating,
-              appthemecolor),
-          const SizedBox(width: 10),
-          if (_runtime.isNotEmpty)
-            _infoChip(Icons.access_time_rounded, 'Duration', _runtime,
-                secondaryColor),
-          const SizedBox(width: 10),
-          _infoChip(Icons.calendar_month_rounded, 'Year', widget.movie.year,
-              secondaryColor),
-          if (_trailerKey != null) ...[
-            const SizedBox(width: 10),
-            Expanded(
-              child: GestureDetector(
-                onTap: () async {
-                  final url = Uri.parse(
-                    'https://www.youtube.com/watch?v=$_trailerKey',
-                  );
-                  if (await canLaunchUrl(url)) {
-                    await launchUrl(url);
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFFFF0000).withValues(alpha: 0.8),
-                        const Color(0xFFCC0000),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.play_arrow_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Trailer',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: R.sp(12),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+          _infoChip(
+            Icons.star_rounded,
+            'Rating',
+            widget.movie.formattedRating,
+            appthemecolor,
+          ),
+          const Gap(10),
+          if (_runtime.isNotEmpty) ...[
+            _infoChip(
+              Icons.access_time_rounded,
+              'Duration',
+              _runtime,
+              secondaryColor,
             ),
+            const Gap(10),
           ],
+          _infoChip(
+            Icons.calendar_month_rounded,
+            'Year',
+            widget.movie.year,
+            secondaryColor,
+          ),
         ],
       ),
     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1);
+  }
+
+  // Trailer button - full width separate row
+  Widget _buildTrailerButton() {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        R.horizontalPadding,
+        0,
+        R.horizontalPadding,
+        16,
+      ),
+      child: GestureDetector(
+        onTap: () async {
+          final url = Uri.parse(
+            'https://www.youtube.com/watch?v=$_trailerKey',
+          );
+          if (await canLaunchUrl(url)) {
+            await launchUrl(url);
+          }
+        },
+        child: Container(
+          height: 52,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                const Color(0xFFFF0000).withValues(alpha: 0.9),
+                const Color(0xFFCC0000),
+              ],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFFFF0000).withValues(alpha: 0.3),
+                blurRadius: 12,
+                spreadRadius: 1,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.play_arrow_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+              const Gap(10),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Watch Trailer',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: R.sp(14),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  Text(
+                    'Opens YouTube',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: R.sp(10),
+                    ),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              const Padding(
+                padding: EdgeInsets.only(right: 16),
+                child: Icon(
+                  Icons.open_in_new_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(duration: 400.ms);
   }
 
   Widget _infoChip(
@@ -461,7 +535,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
         child: Column(
           children: [
             Icon(icon, color: color, size: R.sp(18)),
-            const SizedBox(height: 4),
+            const Gap(4),
             Text(
               value,
               style: TextStyle(
@@ -490,7 +564,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _sectionTitle('Storyline'),
-          const SizedBox(height: 10),
+          const Gap(10),
           ReadMoreText(
             widget.movie.overview,
             textAlign: TextAlign.justify,
@@ -511,7 +585,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 20),
+          const Gap(20),
         ],
       ),
     ).animate().fadeIn(duration: 500.ms);
@@ -525,7 +599,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _sectionTitle('Cast'),
-            const SizedBox(height: 12),
+            const Gap(12),
             const Center(
               child: CircularProgressIndicator(
                 color: appthemecolor,
@@ -543,19 +617,19 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _sectionTitle('Cast'),
-          const SizedBox(height: 12),
+          const Gap(12),
           SizedBox(
-            height: R.castCardHeight,
+            height: 130,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: _cast.length,
               itemBuilder: (context, index) {
                 final actor = _cast[index];
                 final profilePath = actor['profile_path'];
-                return Container(
-                  width: R.castCardWidth,
-                  margin: const EdgeInsets.only(right: 12),
+                return SizedBox(
+                  width: 80,
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
                         decoration: BoxDecoration(
@@ -573,7 +647,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                           ],
                         ),
                         child: CircleAvatar(
-                          radius: R.circleAvatarRadius,
+                          radius: 32,
                           backgroundColor: surfaceColor,
                           backgroundImage: profilePath != null
                               ? CachedNetworkImageProvider(
@@ -581,15 +655,15 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                                 )
                               : null,
                           child: profilePath == null
-                              ? Icon(
+                              ? const Icon(
                                   Icons.person,
                                   color: appthemecolor,
-                                  size: R.circleAvatarRadius,
+                                  size: 28,
                                 )
                               : null,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const Gap(6),
                       Text(
                         actor['name'] ?? '',
                         style: TextStyle(
@@ -601,17 +675,6 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                         textAlign: TextAlign.center,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (actor['character'] != null)
-                        Text(
-                          actor['character'],
-                          style: TextStyle(
-                            color: secondaryColor,
-                            fontSize: R.sp(9),
-                          ),
-                          maxLines: 1,
-                          textAlign: TextAlign.center,
-                          overflow: TextOverflow.ellipsis,
-                        ),
                     ],
                   ),
                 ).animate().fadeIn(
@@ -620,138 +683,58 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
               },
             ),
           ),
-          const SizedBox(height: 20),
+          const Gap(20),
         ],
       ),
     );
   }
 
-  // NEW: Similar Movies Section
   Widget _buildSimilarMovies() {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: R.horizontalPadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle('Similar Movies'),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: R.sectionHeight,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _similarMovies.length,
-              itemBuilder: (context, index) {
-                final movie = _similarMovies[index];
-                return GestureDetector(
-                  onTap: () {
-                    Navigator.pushReplacement(
-                      context,
-                      AppRoutes.scaleRoute(MovieDetailsScreen(movie: movie)),
-                    );
-                  },
-                  child: Container(
-                    width: R.movieCardWidth,
-                    margin: const EdgeInsets.only(right: 12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(R.cardRadius),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(R.cardRadius),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          CachedNetworkImage(
-                            imageUrl:
-                                _tmdbService.getPosterUrl(movie.posterPath),
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) =>
-                                Container(color: surfaceColor),
-                            errorWidget: (context, url, error) => Container(
-                              color: surfaceColor,
-                              child: const Icon(
-                                Icons.movie,
-                                color: appthemecolor,
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Colors.black.withValues(alpha: 0.9),
-                                    Colors.transparent,
-                                  ],
-                                  begin: Alignment.bottomCenter,
-                                  end: Alignment.topCenter,
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    movie.title,
-                                    style: TextStyle(
-                                      color: primaryColor,
-                                      fontSize: R.sp(10),
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.star_rounded,
-                                        color: appthemecolor,
-                                        size: R.sp(10),
-                                      ),
-                                      const SizedBox(width: 2),
-                                      Text(
-                                        movie.formattedRating,
-                                        style: TextStyle(
-                                          color: appthemecolor,
-                                          fontSize: R.sp(9),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: R.horizontalPadding,
+          ),
+          child: _sectionTitle('Similar Movies'),
+        ),
+        const Gap(12),
+        SizedBox(
+          height: R.movieCardHeight + 60,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _similarMovies.length,
+            itemBuilder: (context, index) {
+              final movie = _similarMovies[index];
+              return Padding(
+                padding: EdgeInsets.only(
+                  left: index == 0 ? R.horizontalPadding : 0,
+                  right: index == _similarMovies.length - 1
+                      ? R.horizontalPadding
+                      : 12,
+                ),
+                child: MovieCardWidget(
+                  movie: movie,
+                  index: index,
+                  onTap: () => Navigator.pushReplacement(
+                    context,
+                    AppRoutes.scaleRoute(
+                      MovieDetailsScreen(movie: movie),
                     ),
                   ),
-                ).animate().fadeIn(
-                      delay: Duration(milliseconds: index * 50),
-                    );
-              },
-            ),
+                ),
+              );
+            },
           ),
-          const SizedBox(height: 20),
-        ],
-      ),
+        ),
+        const Gap(20),
+      ],
     );
   }
 
-  // NEW: Theatre status check
   Widget _buildTheatreStatus() {
     if (_isLoading) return const SizedBox();
-
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: R.horizontalPadding,
@@ -788,7 +771,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                 size: R.sp(20),
               ),
             ),
-            const SizedBox(width: 12),
+            const Gap(12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -806,7 +789,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                   Text(
                     _isInTheatres
                         ? 'Book your tickets now!'
-                        : 'This movie is not playing in Indian theatres',
+                        : 'Not playing in Indian theatres',
                     style: TextStyle(
                       color: secondaryColor,
                       fontSize: R.sp(11),
@@ -821,7 +804,6 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
     ).animate().fadeIn(duration: 400.ms);
   }
 
-  // NEW: Live seat counter
   Widget _buildLiveSeatCounter() {
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -832,11 +814,10 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
         stream: FirebaseFirestore.instance.collection(colTimings).snapshots(),
         builder: (context, snapshot) {
           int totalBooked = 0;
-          const totalSeats = 108; // 4*9 + 3*9 + 5*9 = 108
+          const totalSeats = 108;
 
           if (snapshot.hasData) {
             for (final doc in snapshot.data!.docs) {
-              // Only count docs for this movie
               if (doc.id.startsWith('${widget.movie.id}_')) {
                 final data = doc.data() as Map<String, dynamic>;
                 final booked = List<String>.from(data['booked'] ?? []);
@@ -880,7 +861,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                       color: seatColor,
                       size: R.sp(18),
                     ),
-                    const SizedBox(width: 8),
+                    const Gap(8),
                     Text(
                       '$available seats available today',
                       style: TextStyle(
@@ -913,7 +894,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const Gap(10),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
@@ -923,7 +904,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                     minHeight: 6,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const Gap(6),
                 Text(
                   '$totalBooked of $totalSeats seats booked',
                   style: TextStyle(
@@ -946,7 +927,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _sectionTitle('Select Cinema'),
-          const SizedBox(height: 12),
+          const Gap(12),
           FutureBuilder<QuerySnapshot>(
             future: FirebaseFirestore.instance.collection('cinema').get(),
             builder: (context, snapshot) {
@@ -970,8 +951,11 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline, color: secondaryColor),
-                      const SizedBox(width: 10),
+                      const Icon(
+                        Icons.info_outline,
+                        color: secondaryColor,
+                      ),
+                      const Gap(10),
                       Expanded(
                         child: Text(
                           'No cinemas available',
@@ -1017,20 +1001,20 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? appthemecolor.withValues(alpha: 0.1)
+                            ? appthemecolor.withValues(alpha: 0.08)
                             : surfaceColor,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isSelected
                               ? appthemecolor
                               : appthemecolor.withValues(alpha: 0.15),
-                          width: isSelected ? 1.5 : 0.5,
+                          width: isSelected ? 2 : 0.5,
                         ),
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: appthemecolor.withValues(alpha: 0.2),
-                                  blurRadius: 12,
+                                  color: appthemecolor.withValues(alpha: 0.25),
+                                  blurRadius: 16,
                                   spreadRadius: 1,
                                 ),
                               ]
@@ -1038,6 +1022,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                       ),
                       child: Row(
                         children: [
+                          // Cinema logo
                           ClipRRect(
                             borderRadius: BorderRadius.circular(10),
                             child: CachedNetworkImage(
@@ -1056,7 +1041,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const Gap(12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1064,20 +1049,24 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                                 Text(
                                   cinema['name'] ?? '',
                                   style: TextStyle(
-                                    color: primaryColor,
+                                    color: isSelected
+                                        ? appthemecolor
+                                        : primaryColor,
                                     fontSize: R.sp(14),
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
-                                const SizedBox(height: 3),
+                                const Gap(3),
                                 Row(
                                   children: [
-                                    const Icon(
+                                    Icon(
                                       Icons.location_on,
-                                      color: appthemecolor,
+                                      color: isSelected
+                                          ? appthemecolor
+                                          : secondaryColor,
                                       size: 12,
                                     ),
-                                    const SizedBox(width: 3),
+                                    const Gap(3),
                                     Expanded(
                                       child: Text(
                                         cinema['address'] ?? '',
@@ -1091,7 +1080,8 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                                     ),
                                   ],
                                 ),
-                                if (cinema['distance'] != null)
+                                if (cinema['distance'] != null) ...[
+                                  const Gap(2),
                                   Row(
                                     children: [
                                       const Icon(
@@ -1099,7 +1089,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                                         color: successColor,
                                         size: 12,
                                       ),
-                                      const SizedBox(width: 3),
+                                      const Gap(3),
                                       Text(
                                         '${cinema['distance']} km away',
                                         style: TextStyle(
@@ -1110,22 +1100,37 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
                                       ),
                                     ],
                                   ),
+                                ],
                               ],
                             ),
                           ),
-                          if (isSelected)
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: const BoxDecoration(
-                                color: appthemecolor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.check,
-                                color: mobileBackgroundColor,
-                                size: 14,
-                              ),
+                          // Selected checkmark
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            width: isSelected ? 32 : 0,
+                            height: isSelected ? 32 : 0,
+                            decoration: BoxDecoration(
+                              color: appthemecolor,
+                              shape: BoxShape.circle,
+                              boxShadow: isSelected
+                                  ? [
+                                      BoxShadow(
+                                        color: appthemecolor.withValues(
+                                            alpha: 0.4),
+                                        blurRadius: 8,
+                                        spreadRadius: 1,
+                                      ),
+                                    ]
+                                  : null,
                             ),
+                            child: isSelected
+                                ? const Icon(
+                                    Icons.check_rounded,
+                                    color: Colors.black,
+                                    size: 16,
+                                  )
+                                : null,
+                          ),
                         ],
                       ),
                     ),
@@ -1136,7 +1141,7 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
               );
             },
           ),
-          const SizedBox(height: 20),
+          const Gap(20),
         ],
       ),
     );
@@ -1150,75 +1155,91 @@ class _MovieDetailsScreenState extends State<MovieDetailsScreen> {
         R.horizontalPadding,
         30,
       ),
-      child: GestureDetector(
-        onTap: () {
-          if (_theatreSelected) {
-            final bookingProvider = Provider.of<BookingProvider>(
-              context,
-              listen: false,
-            );
-            bookingProvider.setMovie(widget.movie);
-            Navigator.push(
-              context,
-              AppRoutes.slideUpRoute(SeatSelection(
-                movie: widget.movie,
-                theatreName: bookingProvider.cinemaName,
-                theatreAddress: bookingProvider.cinemaAddress,
-                theatreLogo: bookingProvider.cinemaLogo,
-                cinemaId: bookingProvider.cinemaId,
-              )),
-            );
-          } else {
-            showSnackBar('Please select a cinema first', context);
-          }
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.3, end: 1.0),
+        duration: const Duration(seconds: 2),
+        curve: Curves.easeInOut,
+        builder: (context, value, child) {
+          return Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: _theatreSelected
+                  ? [
+                      BoxShadow(
+                        color: appthemecolor.withValues(alpha: 0.4 * value),
+                        blurRadius: 20 * value,
+                        spreadRadius: 2 * value,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: child,
+          );
         },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          height: 58,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: _theatreSelected
-                ? const LinearGradient(
-                    colors: [appthemecolor, goldDark],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  )
-                : null,
-            color: _theatreSelected ? null : surfaceColor,
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: appthemecolor, width: 1.5),
-            boxShadow: _theatreSelected
-                ? [
-                    BoxShadow(
-                      color: appthemecolor.withValues(alpha: 0.4),
-                      blurRadius: 16,
-                      spreadRadius: 2,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : null,
-          ),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.confirmation_num_rounded,
-                color: _theatreSelected ? mobileBackgroundColor : appthemecolor,
-                size: R.sp(22),
+        child: GestureDetector(
+          onTap: () {
+            if (_theatreSelected) {
+              final bookingProvider = Provider.of<BookingProvider>(
+                context,
+                listen: false,
+              );
+              bookingProvider.setMovie(widget.movie);
+              Navigator.push(
+                context,
+                AppRoutes.slideUpRoute(SeatSelection(
+                  movie: widget.movie,
+                  theatreName: bookingProvider.cinemaName,
+                  theatreAddress: bookingProvider.cinemaAddress,
+                  theatreLogo: bookingProvider.cinemaLogo,
+                  cinemaId: bookingProvider.cinemaId,
+                )),
+              );
+            } else {
+              showSnackBar('Please select a cinema first', context);
+            }
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            height: 58,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: _theatreSelected
+                  ? const LinearGradient(
+                      colors: [appthemecolor, goldDark],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    )
+                  : null,
+              color: _theatreSelected ? null : surfaceColor,
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(
+                color: appthemecolor,
+                width: _theatreSelected ? 0 : 1.5,
               ),
-              const SizedBox(width: 10),
-              Text(
-                _theatreSelected ? 'Book Tickets Now' : 'Select a Cinema First',
-                style: TextStyle(
-                  color:
-                      _theatreSelected ? mobileBackgroundColor : appthemecolor,
-                  fontSize: R.sp(16),
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
+            ),
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.confirmation_num_rounded,
+                  color: _theatreSelected ? Colors.black : appthemecolor,
+                  size: R.sp(22),
                 ),
-              ),
-            ],
+                const Gap(10),
+                Text(
+                  _theatreSelected
+                      ? 'Book Tickets Now'
+                      : 'Select a Cinema First',
+                  style: TextStyle(
+                    color: _theatreSelected ? Colors.black : appthemecolor,
+                    fontSize: R.sp(16),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

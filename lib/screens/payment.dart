@@ -1,13 +1,16 @@
 ﻿import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:gap/gap.dart';
 import 'package:movieticket/models/tmdb_movie.dart';
 import 'package:movieticket/screens/ticketscreen.dart';
 import 'package:movieticket/services/tmdb_service.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/constants.dart';
+import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:upi_india/upi_india.dart';
 import 'package:uuid/uuid.dart';
@@ -23,6 +26,8 @@ class PaymentScreen extends StatefulWidget {
   final String theatreIcon;
   final String cinemaId;
   final String timingDocId;
+  final String passengerName;
+  final String passengerEmail;
 
   const PaymentScreen({
     super.key,
@@ -36,6 +41,8 @@ class PaymentScreen extends StatefulWidget {
     required this.theatreIcon,
     required this.cinemaId,
     required this.timingDocId,
+    this.passengerName = '',
+    this.passengerEmail = '',
   });
 
   @override
@@ -53,13 +60,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
   void initState() {
     super.initState();
     _orderId = const Uuid().v4().substring(0, 8).toUpperCase();
-    _loadUpiApps();
+    if (!kIsWeb) _loadUpiApps();
   }
 
   void _loadUpiApps() {
-    _upiIndia
-        .getAllUpiApps(mandatoryTransactionId: false)
-        .then((value) {
+    _upiIndia.getAllUpiApps(mandatoryTransactionId: false).then((value) {
       if (mounted) setState(() => _apps = value);
     }).catchError((err) {
       if (mounted) setState(() => _apps = []);
@@ -80,8 +85,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       );
       if (!mounted) return;
       if (response.status == UpiPaymentStatus.SUCCESS) {
-        final isUnique =
-            await _isTransactionUnique(response.transactionId ?? '');
+        final isUnique = await _isTransactionUnique(
+          response.transactionId ?? '',
+        );
         if (isUnique) {
           await _confirmBooking(response.transactionId ?? '');
         } else {
@@ -96,6 +102,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (mounted) _showError('Payment error: ${e.toString()}');
     }
     if (mounted) setState(() => _isProcessing = false);
+  }
+
+  Future<void> _demoBooking() async {
+    setState(() => _isProcessing = true);
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+    await _confirmBooking('DEMO_$_orderId');
   }
 
   Future<bool> _isTransactionUnique(String transactionId) async {
@@ -115,14 +128,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
     final bookingId = const Uuid().v4();
     try {
-      await FirebaseFirestore.instance
-          .runTransaction((transaction) async {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
         final timingRef = FirebaseFirestore.instance
             .collection(colTimings)
             .doc(widget.timingDocId);
         final timingDoc = await transaction.get(timingRef);
-        final currentBooked =
-            List<String>.from(timingDoc.data()?['booked'] ?? []);
+        final currentBooked = List<String>.from(
+          timingDoc.data()?['booked'] ?? [],
+        );
         for (final seat in widget.seats) {
           if (currentBooked.contains(seat)) {
             throw Exception('Seat $seat already booked');
@@ -134,17 +147,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
           updates['locked.$seat'] = FieldValue.delete();
         }
         updates['booked'] = currentBooked;
-        transaction.set(timingRef, updates, SetOptions(merge: true));
-        final bookingRef = FirebaseFirestore.instance
-            .collection(colBookings)
-            .doc(bookingId);
+        transaction.set(
+          timingRef,
+          updates,
+          SetOptions(merge: true),
+        );
+        final bookingRef =
+            FirebaseFirestore.instance.collection(colBookings).doc(bookingId);
         transaction.set(bookingRef, {
           'bookingId': bookingId,
           'userId': userId,
           'movieId': widget.movie.id,
           'movieName': widget.movie.title,
-          'moviePoster':
-              _tmdbService.getPosterUrl(widget.movie.posterPath),
+          'moviePoster': _tmdbService.getPosterUrl(widget.movie.posterPath),
           'cinemaId': widget.cinemaId,
           'cinemaName': widget.theatreName,
           'cinemaAddress': widget.theatreAddress,
@@ -155,14 +170,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
           'status': 'confirmed',
           'orderId': _orderId,
           'transactionId': transactionId,
+          'passengerName': widget.passengerName,
+          'passengerEmail': widget.passengerEmail,
           'createdAt': FieldValue.serverTimestamp(),
         });
       });
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (context) => TicketScreen(
+        AppRoutes.slideUpRoute(
+          TicketScreen(
             bookingId: bookingId,
             movie: widget.movie,
             seats: widget.seats,
@@ -173,12 +190,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
             time: widget.time,
             amount: widget.amount,
             orderId: _orderId,
+            passengerEmail: widget.passengerEmail,
           ),
         ),
       );
     } catch (e) {
       if (mounted) _showError('Booking failed: ${e.toString()}');
     }
+    if (mounted) setState(() => _isProcessing = false);
   }
 
   void _showError(String message) {
@@ -186,6 +205,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
       SnackBar(
         content: Text(message),
         backgroundColor: errorColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
     );
   }
@@ -218,12 +241,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
           ),
         ),
-        title: Text(
-          'Payment',
-          style: TextStyle(
-            color: primaryColor,
-            fontSize: R.sp(18),
-            fontWeight: FontWeight.w700,
+        title: ShaderMask(
+          shaderCallback: (bounds) => const LinearGradient(
+            colors: [appthemecolor, goldLight],
+          ).createShader(bounds),
+          child: Text(
+            'Payment',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: R.sp(18),
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
         centerTitle: true,
@@ -239,13 +267,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildMovieCard(),
-                      const SizedBox(height: 16),
+                      const Gap(16),
+                      if (widget.passengerName.isNotEmpty)
+                        _buildPassengerCard(),
+                      if (widget.passengerName.isNotEmpty) const Gap(16),
                       _buildOrderDetails(),
-                      const SizedBox(height: 16),
+                      const Gap(16),
                       _buildTotalSection(),
-                      const SizedBox(height: 20),
-                      _buildPaymentMethods(),
-                      const SizedBox(height: 30),
+                      const Gap(24),
+                      kIsWeb ? _buildWebPayment() : _buildPaymentMethods(),
+                      const Gap(30),
                     ],
                   ),
                 ),
@@ -260,21 +291,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 80,
-            height: 80,
+            width: 90,
+            height: 90,
             decoration: BoxDecoration(
               color: appthemecolor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
               border: Border.all(
                 color: appthemecolor.withValues(alpha: 0.3),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: appthemecolor.withValues(alpha: 0.2),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
             child: const CircularProgressIndicator(
               color: appthemecolor,
               strokeWidth: 2,
             ),
           ),
-          const SizedBox(height: 24),
+          const Gap(24),
           Text(
             'Processing Payment...',
             style: TextStyle(
@@ -283,13 +321,32 @@ class _PaymentScreenState extends State<PaymentScreen> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 8),
+          const Gap(8),
           Text(
             'Please do not close the app',
             style: TextStyle(
               color: secondaryColor,
               fontSize: R.sp(13),
             ),
+          ),
+          const Gap(8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.lock_rounded,
+                color: successColor,
+                size: 14,
+              ),
+              const Gap(6),
+              Text(
+                'Your transaction is secure',
+                style: TextStyle(
+                  color: successColor,
+                  fontSize: R.sp(12),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -300,15 +357,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Container(
       decoration: BoxDecoration(
         color: surfaceColor,
-        borderRadius: BorderRadius.circular(R.cardRadius),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: appthemecolor.withValues(alpha: 0.2),
-          width: 0.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 8,
+            color: appthemecolor.withValues(alpha: 0.05),
+            blurRadius: 12,
             spreadRadius: 1,
           ),
         ],
@@ -316,13 +372,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(R.cardRadius),
-              bottomLeft: Radius.circular(R.cardRadius),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(16),
+              bottomLeft: Radius.circular(16),
             ),
             child: CachedNetworkImage(
-              imageUrl:
-                  _tmdbService.getPosterUrl(widget.movie.posterPath),
+              imageUrl: _tmdbService.getPosterUrl(widget.movie.posterPath),
               width: R.isPhone ? 90 : 110,
               height: R.isPhone ? 130 : 150,
               fit: BoxFit.cover,
@@ -334,10 +389,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 14),
+          const Gap(14),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -345,28 +400,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     widget.movie.title,
                     style: TextStyle(
                       color: appthemecolor,
-                      fontSize: R.sp(16),
+                      fontSize: R.sp(15),
                       fontWeight: FontWeight.w700,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 10),
-                  _detailRow(Icons.location_on, widget.theatreName),
-                  const SizedBox(height: 5),
-                  _detailRow(Icons.calendar_today, widget.date),
-                  const SizedBox(height: 5),
-                  _detailRow(Icons.access_time, widget.time),
-                  const SizedBox(height: 5),
+                  const Gap(10),
+                  _detailRow(Icons.theaters_rounded, widget.theatreName),
+                  const Gap(5),
+                  _detailRow(Icons.calendar_today_rounded, widget.date),
+                  const Gap(5),
+                  _detailRow(Icons.access_time_rounded, widget.time),
+                  const Gap(5),
                   _detailRow(
-                    Icons.event_seat,
+                    Icons.event_seat_rounded,
                     widget.seats.join(', '),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const Gap(12),
         ],
       ),
     ).animate().fadeIn(duration: 400.ms);
@@ -375,8 +430,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget _detailRow(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, color: appthemecolor, size: R.sp(14)),
-        const SizedBox(width: 6),
+        Icon(icon, color: appthemecolor, size: R.sp(13)),
+        const Gap(6),
         Expanded(
           child: Text(
             text,
@@ -392,30 +447,110 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _buildOrderDetails() {
+  Widget _buildPassengerCard() {
     return Container(
-      padding: EdgeInsets.all(R.px(16)),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: surfaceColor,
-        borderRadius: BorderRadius.circular(R.cardRadius),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: appthemecolor.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: appthemecolor.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.person_rounded,
+                  color: appthemecolor,
+                  size: 16,
+                ),
+              ),
+              const Gap(10),
+              Text(
+                'Passenger Details',
+                style: TextStyle(
+                  color: primaryColor,
+                  fontSize: R.sp(14),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const Gap(12),
+          _passengerRow(Icons.badge_rounded, 'Name', widget.passengerName),
+          const Gap(8),
+          _passengerRow(Icons.email_outlined, 'Email', widget.passengerEmail),
+        ],
+      ),
+    ).animate().fadeIn(delay: 150.ms, duration: 400.ms);
+  }
+
+  Widget _passengerRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, color: secondaryColor, size: R.sp(14)),
+        const Gap(8),
+        Text(
+          '$label:',
+          style: TextStyle(
+            color: secondaryColor,
+            fontSize: R.sp(12),
+          ),
+        ),
+        const Gap(8),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              color: primaryColor,
+              fontSize: R.sp(12),
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOrderDetails() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: appthemecolor.withValues(alpha: 0.15),
-          width: 0.5,
         ),
       ),
       child: Column(
         children: [
-          _orderRow('Order ID', '#$_orderId'),
-          Divider(
-            color: appthemecolor.withValues(alpha: 0.1),
-            height: 20,
-          ),
-          _orderRow('Seats', widget.seats.join(', ')),
+          _orderRow(Icons.tag_rounded, 'Order ID', '#$_orderId'),
           Divider(
             color: appthemecolor.withValues(alpha: 0.1),
             height: 20,
           ),
           _orderRow(
+            Icons.event_seat_rounded,
+            'Seats',
+            widget.seats.join(', '),
+          ),
+          Divider(
+            color: appthemecolor.withValues(alpha: 0.1),
+            height: 20,
+          ),
+          _orderRow(
+            Icons.confirmation_num_rounded,
             'Tickets',
             '${widget.seats.length} ticket${widget.seats.length > 1 ? 's' : ''}',
           ),
@@ -424,10 +559,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
     ).animate().fadeIn(delay: 200.ms, duration: 400.ms);
   }
 
-  Widget _orderRow(String label, String value) {
+  Widget _orderRow(IconData icon, String label, String value) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        Icon(icon, color: appthemecolor, size: R.sp(14)),
+        const Gap(8),
         Text(
           label,
           style: TextStyle(
@@ -435,6 +571,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
             fontSize: R.sp(13),
           ),
         ),
+        const Spacer(),
         Flexible(
           child: Text(
             value,
@@ -454,7 +591,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   Widget _buildTotalSection() {
     return Container(
-      padding: EdgeInsets.all(R.px(16)),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
@@ -462,14 +599,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
             appthemecolor.withValues(alpha: 0.05),
           ],
         ),
-        borderRadius: BorderRadius.circular(R.cardRadius),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: appthemecolor.withValues(alpha: 0.4),
         ),
         boxShadow: [
           BoxShadow(
             color: appthemecolor.withValues(alpha: 0.1),
-            blurRadius: 12,
+            blurRadius: 16,
             spreadRadius: 1,
           ),
         ],
@@ -480,14 +617,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Total Amount',
-                style: TextStyle(
-                  color: secondaryColor,
-                  fontSize: R.sp(13),
-                ),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.currency_rupee_rounded,
+                    color: secondaryColor,
+                    size: 14,
+                  ),
+                  const Gap(4),
+                  Text(
+                    'Total Amount',
+                    style: TextStyle(
+                      color: secondaryColor,
+                      fontSize: R.sp(13),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
+              const Gap(4),
               Text(
                 '${widget.seats.length} ticket${widget.seats.length > 1 ? 's' : ''}',
                 style: TextStyle(
@@ -498,9 +645,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ],
           ),
           Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '\u20B9',
+                '₹',
                 style: TextStyle(
                   color: appthemecolor,
                   fontSize: R.sp(20),
@@ -511,8 +659,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 '${widget.amount}',
                 style: TextStyle(
                   color: appthemecolor,
-                  fontSize: R.sp(28),
+                  fontSize: R.sp(32),
                   fontWeight: FontWeight.w800,
+                  height: 1,
                 ),
               ),
             ],
@@ -536,29 +685,166 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(width: 10),
+            const Gap(10),
             Text(
               'Pay via UPI',
               style: TextStyle(
                 color: primaryColor,
-                fontSize: R.sp(18),
+                fontSize: R.sp(16),
                 fontWeight: FontWeight.w700,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const Gap(12),
         Container(
-          padding: EdgeInsets.all(R.px(16)),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: surfaceColor,
-            borderRadius: BorderRadius.circular(R.cardRadius),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: appthemecolor.withValues(alpha: 0.15),
-              width: 0.5,
             ),
           ),
           child: _buildUpiApps(),
+        ),
+      ],
+    ).animate().fadeIn(delay: 400.ms, duration: 400.ms);
+  }
+
+  Widget _buildWebPayment() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 4,
+              height: 20,
+              decoration: BoxDecoration(
+                color: appthemecolor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Gap(10),
+            Text(
+              'Complete Payment',
+              style: TextStyle(
+                color: primaryColor,
+                fontSize: R.sp(16),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        const Gap(12),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: appthemecolor.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: warningColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: warningColor.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      color: warningColor,
+                      size: 18,
+                    ),
+                    const Gap(10),
+                    Expanded(
+                      child: Text(
+                        'UPI payments are available on Android & iOS only. Use the button below to complete your booking on web.',
+                        style: TextStyle(
+                          color: warningColor,
+                          fontSize: R.sp(12),
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Gap(16),
+              GestureDetector(
+                onTap: _demoBooking,
+                child: Container(
+                  height: 56,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [appthemecolor, goldDark],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    borderRadius: BorderRadius.circular(30),
+                    boxShadow: [
+                      BoxShadow(
+                        color: appthemecolor.withValues(alpha: 0.4),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.check_circle_rounded,
+                        color: Colors.black,
+                        size: 20,
+                      ),
+                      const Gap(10),
+                      Text(
+                        'Confirm Booking',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: R.sp(15),
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const Gap(10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.lock_rounded,
+                    color: hintColor,
+                    size: 12,
+                  ),
+                  const Gap(6),
+                  Text(
+                    'This is a demo for portfolio purposes',
+                    style: TextStyle(
+                      color: hintColor,
+                      fontSize: R.sp(11),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ],
     ).animate().fadeIn(delay: 400.ms, duration: 400.ms);
@@ -586,22 +872,23 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.payment,
+                  Icons.payment_rounded,
                   color: appthemecolor,
-                  size: 40,
+                  size: 36,
                 ),
               ),
-              const SizedBox(height: 12),
+              const Gap(12),
               Text(
                 'No UPI apps found',
                 style: TextStyle(
                   color: secondaryColor,
                   fontSize: R.sp(14),
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 4),
+              const Gap(6),
               Text(
-                'Please install a UPI app like GPay or PhonePe',
+                'Please install GPay, PhonePe or Paytm',
                 style: TextStyle(
                   color: hintColor,
                   fontSize: R.sp(11),
@@ -627,17 +914,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: appthemecolor.withValues(alpha: 0.2),
-                width: 0.5,
               ),
             ),
             child: Column(
               children: [
-                Image.memory(
-                  app.icon,
-                  height: 44,
-                  width: 44,
-                ),
-                const SizedBox(height: 6),
+                Image.memory(app.icon, height: 44, width: 44),
+                const Gap(6),
                 Text(
                   app.name,
                   style: TextStyle(

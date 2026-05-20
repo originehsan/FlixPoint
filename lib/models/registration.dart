@@ -4,15 +4,14 @@ class UserDetails {
   final String city;
 
   UserDetails({
-    required this.city,
     required this.email,
     required this.name,
+    this.city = '',
   });
 
   Map<String, dynamic> toJson() => {
     "username": name,
     "email": email,
     "city": city,
-    // password REMOVED - never store passwords in Firestore
   };
 }
