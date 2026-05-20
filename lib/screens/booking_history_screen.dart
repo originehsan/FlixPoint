@@ -202,7 +202,7 @@ class _BookingHistoryScreenState
       },
     );
   }
-
+// to  handle exception
   Widget _buildEmptyState({
     String message = 'No tickets yet',
     String sub = 'Book your first movie ticket!',
