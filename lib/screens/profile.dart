@@ -5,170 +5,184 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:gap/gap.dart';
 import 'package:movieticket/auth/signin.dart';
 import 'package:movieticket/provider/user_provider.dart';
+import 'package:movieticket/screens/watchlist_screen.dart';
 import 'package:movieticket/utils/booking_utils.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/constants.dart';
 import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
+import 'package:movieticket/widgets/common/app_badge.dart';
+import 'package:movieticket/widgets/common/app_button.dart';
+import 'package:movieticket/widgets/common/cards/app_card.dart';
+import 'package:movieticket/widgets/common/dialogs/confirm_dialog.dart';
+import 'package:movieticket/widgets/common/section_header.dart';
+import 'package:movieticket/widgets/common/shimmer_box.dart';
+import 'package:movieticket/widgets/common/snackbars/app_snackbar.dart';
+import 'package:movieticket/widgets/common/spacing/gold_divider.dart';
+
 import 'package:provider/provider.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
-  Future<void> _showLogoutDialog(
-    BuildContext context,
+  @override
+  State<ProfileScreen> createState() =>
+      _ProfileScreenState();
+}
+
+class _ProfileScreenState
+    extends State<ProfileScreen> {
+  bool _isLoggingOut = false;
+
+  Future<void> _handleLogout(
     UserProvider userProvider,
   ) async {
-    final confirmed = await showDialog<bool>(
+    await ConfirmDialog.show(
+      context,
+      title: 'Sign Out',
+      message:
+          'Are you sure you want to sign out of FlixPoint?',
+      confirmText: 'Sign Out',
+      confirmColor: errorColor,
+      icon: Icons.logout_rounded,
+      iconColor: errorColor,
+      onConfirm: () async {
+        if (mounted) {
+          setState(() => _isLoggingOut = true);
+        }
+        userProvider.clearUser();
+        await FirebaseAuth.instance.signOut();
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            AppRoutes.homeEntryRoute(const LoginIn()),
+          );
+        }
+      },
+    );
+  }
+
+  void _showAboutDialog() {
+    showDialog(
       context: context,
-      barrierDismissible: true,
-      barrierColor: Colors.black.withValues(alpha: 0.7),
-      builder: (context) => Dialog(
+      builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: surfaceColor,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: appthemecolor.withValues(alpha: 0.3),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: appthemecolor.withValues(alpha: 0.1),
-                blurRadius: 30,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
+        child: AppCard(
+          borderRadius: 24,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: errorColor.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: errorColor.withValues(alpha: 0.3),
+              ShaderMask(
+                shaderCallback: (bounds) =>
+                    const LinearGradient(
+                  colors: [appthemecolor, goldLight],
+                ).createShader(bounds),
+                child: Text(
+                  'FlixPoint',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: R.sp(32),
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2,
                   ),
                 ),
-                child: const Icon(
-                  Icons.logout_rounded,
-                  color: errorColor,
-                  size: 32,
+              ),
+              const Gap(4),
+              Text(
+                'Version 1.0.0',
+                style: TextStyle(
+                  color: secondaryColor,
+                  fontSize: R.sp(12),
                 ),
               ),
               const Gap(16),
-              Text(
-                'Sign Out',
-                style: TextStyle(
-                  color: primaryColor,
-                  fontSize: R.sp(20),
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              const Gap(8),
-              Text(
-                'Are you sure you want to sign out of FlixPoint?',
-                style: TextStyle(
-                  color: secondaryColor,
-                  fontSize: R.sp(13),
-                  height: 1.5,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const Gap(24),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () =>
-                          Navigator.pop(context, false),
-                      child: Container(
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: surfaceColor,
-                          borderRadius:
-                              BorderRadius.circular(30),
-                          border: Border.all(
-                            color: appthemecolor
-                                .withValues(alpha: 0.3),
-                          ),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Cancel',
-                          style: TextStyle(
-                            color: appthemecolor,
-                            fontSize: R.sp(14),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ),
+              AppCard(
+                backgroundColor: appthemecolor
+                    .withValues(alpha: 0.06),
+                borderColor: appthemecolor
+                    .withValues(alpha: 0.15),
+                child: Text(
+                  'FlixPoint is a premium movie booking '
+                  'app. Book tickets, manage your watchlist '
+                  'and enjoy the best cinema experience.',
+                  style: TextStyle(
+                    color: secondaryColor,
+                    fontSize: R.sp(12),
+                    height: 1.5,
                   ),
-                  const Gap(12),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () =>
-                          Navigator.pop(context, true),
-                      child: Container(
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: errorColor
-                              .withValues(alpha: 0.15),
-                          borderRadius:
-                              BorderRadius.circular(30),
-                          border: Border.all(
-                            color: errorColor
-                                .withValues(alpha: 0.5),
-                          ),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Sign Out',
-                          style: TextStyle(
-                            color: errorColor,
-                            fontSize: R.sp(14),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const Gap(16),
+              Row(
+                mainAxisAlignment:
+                    MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.code_rounded,
+                    color: appthemecolor,
+                    size: 14,
+                  ),
+                  const Gap(6),
+                  Text(
+                    'Built with Flutter',
+                    style: TextStyle(
+                      color: appthemecolor,
+                      fontSize: R.sp(12),
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
+              ),
+              const Gap(20),
+              AppButton(
+                label: 'Close',
+                height: 46,
+                onTap: () => Navigator.pop(context),
               ),
             ],
           ),
         ),
       ),
     );
-
-    if (confirmed == true && context.mounted) {
-      userProvider.clearUser();
-      await FirebaseAuth.instance.signOut();
-      if (context.mounted) {
-        Navigator.of(context).pushReplacement(
-          AppRoutes.homeEntryRoute(const LoginIn()),
-        );
-      }
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     R.init(context);
-    final userProvider = Provider.of<UserProvider>(context);
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final userProvider =
+        Provider.of<UserProvider>(context);
+    final uid =
+        FirebaseAuth.instance.currentUser?.uid ?? '';
 
     if (userProvider.isLoading) {
-      return const Scaffold(
+      return Scaffold(
         backgroundColor: mobileBackgroundColor,
-        body: Center(
-          child: CircularProgressIndicator(
-            color: appthemecolor,
+        body: ListView(
+          padding: EdgeInsets.fromLTRB(
+            R.horizontalPadding,
+            60,
+            R.horizontalPadding,
+            0,
           ),
+          children: [
+            ShimmerBox(
+              width: double.infinity,
+              height: 120,
+              borderRadius: 24,
+              margin: const EdgeInsets.only(bottom: 16),
+            ),
+            ShimmerBox(
+              width: double.infinity,
+              height: 100,
+              borderRadius: 16,
+              margin: const EdgeInsets.only(bottom: 16),
+            ),
+            ShimmerBox(
+              width: double.infinity,
+              height: 200,
+              borderRadius: 16,
+            ),
+          ],
         ),
       );
     }
@@ -177,15 +191,16 @@ class ProfileScreen extends StatelessWidget {
       backgroundColor: mobileBackgroundColor,
       body: Center(
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: R.maxWidth),
+          constraints:
+              BoxConstraints(maxWidth: R.maxWidth),
           child: CustomScrollView(
             slivers: [
-              // AppBar
               SliverAppBar(
                 backgroundColor: mobileBackgroundColor,
                 floating: true,
                 snap: true,
                 elevation: 0,
+                automaticallyImplyLeading: false,
                 title: ShaderMask(
                   shaderCallback: (bounds) =>
                       const LinearGradient(
@@ -203,31 +218,16 @@ class ProfileScreen extends StatelessWidget {
                 ),
                 centerTitle: true,
               ),
-
               SliverToBoxAdapter(
                 child: Column(
                   children: [
-                    // User card
-                    _buildUserCard(context, userProvider),
-
+                    _buildUserCard(userProvider),
                     Gap(R.px(20)),
-
-                    // Stats
                     _buildStats(uid),
-
                     Gap(R.px(20)),
-
-                    // Account section
-                    _buildAccountSection(context),
-
+                    _buildAccountSection(),
                     Gap(R.px(24)),
-
-                    // Logout button
-                    _buildLogoutButton(
-                      context,
-                      userProvider,
-                    ),
-
+                    _buildLogoutButton(userProvider),
                     Gap(R.px(40)),
                   ],
                 ),
@@ -239,32 +239,15 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildUserCard(
-    BuildContext context,
-    UserProvider userProvider,
-  ) {
-    return Container(
+  Widget _buildUserCard(UserProvider userProvider) {
+    return AppCard(
+      borderRadius: 24,
+      hasGlow: true,
       margin: EdgeInsets.fromLTRB(
         R.horizontalPadding,
         8,
         R.horizontalPadding,
         0,
-      ),
-      padding: EdgeInsets.all(R.px(20)),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: appthemecolor.withValues(alpha: 0.3),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: appthemecolor.withValues(alpha: 0.08),
-            blurRadius: 24,
-            spreadRadius: 2,
-          ),
-        ],
       ),
       child: Row(
         children: [
@@ -288,7 +271,8 @@ class ProfileScreen extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: appthemecolor.withValues(alpha: 0.4),
+                  color: appthemecolor
+                      .withValues(alpha: 0.4),
                   blurRadius: 16,
                   spreadRadius: 2,
                 ),
@@ -304,12 +288,11 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
           ),
-
           Gap(R.px(16)),
-
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
                 ShaderMask(
                   shaderCallback: (bounds) =>
@@ -327,77 +310,189 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-
                 const Gap(6),
-
                 if (userProvider.email.isNotEmpty)
-                  _profileDetail(
-                    Icons.email_rounded,
-                    userProvider.email,
+                  _ProfileDetail(
+                    icon: Icons.email_rounded,
+                    text: userProvider.email,
                   ),
-
                 if (userProvider.city.isNotEmpty) ...[
                   const Gap(4),
-                  _profileDetail(
-                    Icons.location_on_rounded,
-                    userProvider.city,
+                  _ProfileDetail(
+                    icon: Icons.location_on_rounded,
+                    text: userProvider.city,
                   ),
                 ],
-
                 const Gap(10),
-
-                // FlixPoint Member badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [appthemecolor, goldDark],
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: appthemecolor
-                            .withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.stars_rounded,
-                        color: Colors.black,
-                        size: 12,
-                      ),
-                      const Gap(4),
-                      Text(
-                        'FlixPoint Member',
-                        style: TextStyle(
-                          color: Colors.black,
-                          fontSize: R.sp(10),
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
+                // AppBadge replaces custom Container badge
+                AppBadge(
+                  label: 'FlixPoint Member',
+                  icon: Icons.stars_rounded,
+                  color: appthemecolor,
+                  hasGlow: true,
                 ),
               ],
             ),
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1);
+    ).animate().fadeIn(duration: 400.ms).slideY(
+          begin: -0.1,
+        );
   }
 
-  Widget _profileDetail(IconData icon, String text) {
+  Widget _buildStats(String uid) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection(colBookings)
+          .where('userId', isEqualTo: uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final docs = snapshot.data?.docs ?? [];
+        final total = docs.length;
+        final upcoming = docs.where((doc) {
+          final data =
+              doc.data() as Map<String, dynamic>;
+          final status = BookingUtils.getStatus(
+            data['date'] ?? '',
+            data['time'] ?? '',
+          );
+          return status == BookingStatus.upcoming ||
+              status == BookingStatus.today;
+        }).length;
+        final expired = total - upcoming;
+
+        return Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: R.horizontalPadding,
+          ),
+          child: Row(
+            children: [
+              _StatCard(
+                label: 'Total',
+                value: total.toString(),
+                icon: Icons.confirmation_num_rounded,
+                color: appthemecolor,
+              ),
+              Gap(R.px(10)),
+              _StatCard(
+                label: 'Upcoming',
+                value: upcoming.toString(),
+                icon: Icons.event_available_rounded,
+                color: successColor,
+              ),
+              Gap(R.px(10)),
+              _StatCard(
+                label: 'Expired',
+                value: expired.toString(),
+                icon: Icons.event_busy_rounded,
+                color: secondaryColor,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAccountSection() {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: R.horizontalPadding,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(title: 'Account'),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                _AccountTile(
+                  icon: Icons.bookmark_rounded,
+                  title: 'My Watchlist',
+                  subtitle: 'Movies you want to watch',
+                  onTap: () => Navigator.push(
+                    context,
+                    AppRoutes.slideUpRoute(
+                      const WatchlistScreen(),
+                    ),
+                  ),
+                ),
+                GoldDivider(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                  ),
+                ),
+                _AccountTile(
+                  icon: Icons.help_outline_rounded,
+                  title: 'Help & Support',
+                  subtitle: 'FAQs and contact us',
+                  onTap: () => AppSnackbar.info(
+                    context,
+                    'Help & Support coming soon!',
+                  ),
+                ),
+                GoldDivider(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                  ),
+                ),
+                _AccountTile(
+                  icon: Icons.info_outline_rounded,
+                  title: 'About FlixPoint',
+                  subtitle: 'Version 1.0.0',
+                  onTap: _showAboutDialog,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: 250.ms);
+  }
+
+  Widget _buildLogoutButton(
+    UserProvider userProvider,
+  ) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: R.horizontalPadding,
+      ),
+      child: AppButton(
+        label: 'Sign Out',
+        icon: Icons.logout_rounded,
+        isGradient: false,
+        isOutlined: true,
+        color: errorColor,
+        height: 54,
+        isLoading: _isLoggingOut,
+        onTap: () => _handleLogout(userProvider),
+      ),
+    ).animate().fadeIn(delay: 300.ms);
+  }
+}
+
+// Profile detail row used inside user card
+class _ProfileDetail extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _ProfileDetail({
+    required this.icon,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    R.init(context);
     return Row(
       children: [
-        Icon(icon, color: appthemecolor, size: R.sp(13)),
+        Icon(
+          icon,
+          color: appthemecolor,
+          size: R.sp(13),
+        ),
         const Gap(6),
         Expanded(
           child: Text(
@@ -413,79 +508,28 @@ class ProfileScreen extends StatelessWidget {
       ],
     );
   }
+}
 
-  Widget _buildStats(String uid) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection(colBookings)
-          .where('userId', isEqualTo: uid)
-          .snapshots(),
-      builder: (context, snapshot) {
-        final docs = snapshot.data?.docs ?? [];
-        final total = docs.length;
+// Stat card used 3 times in stats section
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
 
-        final upcoming = docs.where((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final status = BookingUtils.getStatus(
-            data['date'] ?? '',
-            data['time'] ?? '',
-          );
-          return status == BookingStatus.upcoming ||
-              status == BookingStatus.today;
-        }).length;
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
 
-        final expired = total - upcoming;
-
-        return Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: R.horizontalPadding,
-          ),
-          child: Row(
-            children: [
-              _statCard(
-                'Total',
-                total.toString(),
-                Icons.confirmation_num_rounded,
-                appthemecolor,
-              ),
-              Gap(R.px(10)),
-              _statCard(
-                'Upcoming',
-                upcoming.toString(),
-                Icons.event_available_rounded,
-                successColor,
-              ),
-              Gap(R.px(10)),
-              _statCard(
-                'Expired',
-                expired.toString(),
-                Icons.event_busy_rounded,
-                secondaryColor,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _statCard(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
+  @override
+  Widget build(BuildContext context) {
+    R.init(context);
     return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(R.px(14)),
-        decoration: BoxDecoration(
-          color: surfaceColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: color.withValues(alpha: 0.2),
-            width: 0.5,
-          ),
-        ),
+      child: AppCard(
+        borderColor: color.withValues(alpha: 0.2),
         child: Column(
           children: [
             Container(
@@ -494,7 +538,11 @@ class ProfileScreen extends StatelessWidget {
                 color: color.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: color, size: R.sp(18)),
+              child: Icon(
+                icon,
+                color: color,
+                size: R.sp(18),
+              ),
             ),
             Gap(R.px(8)),
             Text(
@@ -517,91 +565,25 @@ class ProfileScreen extends StatelessWidget {
       ).animate().fadeIn(delay: 200.ms),
     );
   }
+}
 
-  Widget _buildAccountSection(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: R.horizontalPadding,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 3,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: appthemecolor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const Gap(8),
-              Text(
-                'Account',
-                style: TextStyle(
-                  color: primaryColor,
-                  fontSize: R.sp(15),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const Gap(12),
-          Container(
-            decoration: BoxDecoration(
-              color: surfaceColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: appthemecolor.withValues(alpha: 0.1),
-              ),
-            ),
-            child: Column(
-              children: [
-                _accountTile(
-                  Icons.confirmation_num_rounded,
-                  'My Tickets',
-                  'View all bookings',
-                  onTap: () {},
-                ),
-                Divider(
-                  color: appthemecolor.withValues(alpha: 0.08),
-                  height: 1,
-                  indent: 16,
-                  endIndent: 16,
-                ),
-                _accountTile(
-                  Icons.help_outline_rounded,
-                  'Help & Support',
-                  'FAQs and contact us',
-                  onTap: () {},
-                ),
-                Divider(
-                  color: appthemecolor.withValues(alpha: 0.08),
-                  height: 1,
-                  indent: 16,
-                  endIndent: 16,
-                ),
-                _accountTile(
-                  Icons.info_outline_rounded,
-                  'About FlixPoint',
-                  'Version 1.0.0',
-                  onTap: () {},
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(delay: 250.ms);
-  }
+// Account menu tile used 3 times
+class _AccountTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
 
-  Widget _accountTile(
-    IconData icon,
-    String title,
-    String subtitle, {
-    required VoidCallback onTap,
-  }) {
+  const _AccountTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    R.init(context);
     return GestureDetector(
       onTap: onTap,
       child: Padding(
@@ -614,8 +596,10 @@ class ProfileScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: appthemecolor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+                color: appthemecolor
+                    .withValues(alpha: 0.1),
+                borderRadius:
+                    BorderRadius.circular(10),
               ),
               child: Icon(
                 icon,
@@ -626,7 +610,8 @@ class ProfileScreen extends StatelessWidget {
             const Gap(12),
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
@@ -655,59 +640,5 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Widget _buildLogoutButton(
-    BuildContext context,
-    UserProvider userProvider,
-  ) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: R.horizontalPadding,
-      ),
-      child: GestureDetector(
-        onTap: () => _showLogoutDialog(context, userProvider),
-        child: Container(
-          height: 54,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: errorColor.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(
-              color: errorColor.withValues(alpha: 0.4),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: errorColor.withValues(alpha: 0.1),
-                blurRadius: 12,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.logout_rounded,
-                color: errorColor,
-                size: 20,
-              ),
-              const Gap(10),
-              Text(
-                'Sign Out',
-                style: TextStyle(
-                  color: errorColor,
-                  fontSize: R.sp(15),
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ).animate().fadeIn(delay: 300.ms);
   }
 }

@@ -9,8 +9,14 @@ import 'package:movieticket/services/tmdb_service.dart';
 import 'package:movieticket/utils/booking_utils.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/responsive.dart';
-import 'package:movieticket/widgets/dashed_divider.dart';
-import 'package:movieticket/widgets/ticket_detail_widget.dart';
+import 'package:movieticket/widgets/common/app_badge.dart';
+import 'package:movieticket/widgets/common/app_button.dart';
+import 'package:movieticket/widgets/common/appbar/app_appbar.dart';
+import 'package:movieticket/widgets/common/cards/app_card.dart';
+import 'package:movieticket/widgets/common/shimmer_box.dart';
+import 'package:movieticket/widgets/common/snackbars/app_snackbar.dart';
+import 'package:movieticket/widgets/ticket/dashed_divider.dart';
+import 'package:movieticket/widgets/ticket/ticket_detail_widget.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:pdf/pdf.dart';
@@ -49,7 +55,8 @@ class TicketScreen extends StatefulWidget {
   });
 
   @override
-  State<TicketScreen> createState() => _TicketScreenState();
+  State<TicketScreen> createState() =>
+      _TicketScreenState();
 }
 
 class _TicketScreenState extends State<TicketScreen> {
@@ -60,15 +67,19 @@ class _TicketScreenState extends State<TicketScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 2800), () {
-      if (mounted) setState(() => _lottieComplete = true);
-    });
+    Future.delayed(
+      const Duration(milliseconds: 2800),
+      () {
+        if (mounted) {
+          setState(() => _lottieComplete = true);
+        }
+      },
+    );
   }
 
   Future<void> _shareTicket() async {
     setState(() => _isSharing = true);
     try {
-      // Build passengers text for sharing
       final passengersText = widget.seatPassengers.entries
           .map((e) => '  ${e.key} → ${e.value}')
           .join('\n');
@@ -84,12 +95,10 @@ class _TicketScreenState extends State<TicketScreen> {
           'Amount: ₹${widget.amount}';
 
       if (kIsWeb) {
-        // Web: share text only
         await SharePlus.instance.share(
           ShareParams(text: shareText),
         );
       } else {
-        // Mobile: generate PDF and share
         final pdf = pw.Document();
         pdf.addPage(
           pw.Page(
@@ -102,7 +111,8 @@ class _TicketScreenState extends State<TicketScreen> {
                     color: PdfColors.amber,
                     width: 2,
                   ),
-                  borderRadius: const pw.BorderRadius.all(
+                  borderRadius:
+                      const pw.BorderRadius.all(
                     pw.Radius.circular(12),
                   ),
                 ),
@@ -110,7 +120,6 @@ class _TicketScreenState extends State<TicketScreen> {
                   crossAxisAlignment:
                       pw.CrossAxisAlignment.start,
                   children: [
-                    // Header
                     pw.Row(
                       mainAxisAlignment:
                           pw.MainAxisAlignment.spaceBetween,
@@ -123,7 +132,8 @@ class _TicketScreenState extends State<TicketScreen> {
                               'FlixPoint',
                               style: pw.TextStyle(
                                 fontSize: 32,
-                                fontWeight: pw.FontWeight.bold,
+                                fontWeight:
+                                    pw.FontWeight.bold,
                                 color: PdfColors.amber,
                               ),
                             ),
@@ -153,7 +163,8 @@ class _TicketScreenState extends State<TicketScreen> {
                             'CONFIRMED',
                             style: pw.TextStyle(
                               fontSize: 12,
-                              fontWeight: pw.FontWeight.bold,
+                              fontWeight:
+                                  pw.FontWeight.bold,
                               color: PdfColors.white,
                             ),
                           ),
@@ -162,8 +173,6 @@ class _TicketScreenState extends State<TicketScreen> {
                     ),
                     pw.Divider(color: PdfColors.amber),
                     pw.SizedBox(height: 10),
-
-                    // Movie title
                     pw.Text(
                       widget.movie.title,
                       style: pw.TextStyle(
@@ -172,17 +181,21 @@ class _TicketScreenState extends State<TicketScreen> {
                       ),
                     ),
                     pw.SizedBox(height: 20),
-
-                    // Booking details
-                    _pdfRow('Order ID', '#${widget.orderId}'),
+                    _pdfRow(
+                      'Order ID',
+                      '#${widget.orderId}',
+                    ),
                     _pdfRow('Cinema', widget.theatreName),
-                    _pdfRow('Address', widget.theatreAddress),
+                    _pdfRow(
+                        'Address', widget.theatreAddress),
                     _pdfRow('Date', widget.date),
                     _pdfRow('Time', widget.time),
-                    _pdfRow('Seats', widget.seats.join(', ')),
-
-                    // Passengers per seat
-                    if (widget.seatPassengers.isNotEmpty) ...[
+                    _pdfRow(
+                      'Seats',
+                      widget.seats.join(', '),
+                    ),
+                    if (widget
+                        .seatPassengers.isNotEmpty) ...[
                       pw.SizedBox(height: 8),
                       pw.Text(
                         'Passengers:',
@@ -212,15 +225,9 @@ class _TicketScreenState extends State<TicketScreen> {
                           )
                           .toList(),
                     ],
-
-                    if (widget.passengerEmail.isNotEmpty) ...[
-                      pw.SizedBox(height: 4),
+                    if (widget.passengerEmail.isNotEmpty)
                       _pdfRow('Email', widget.passengerEmail),
-                    ],
-
                     pw.Divider(color: PdfColors.amber),
-
-                    // Total
                     pw.Row(
                       mainAxisAlignment:
                           pw.MainAxisAlignment.spaceBetween,
@@ -242,10 +249,7 @@ class _TicketScreenState extends State<TicketScreen> {
                         ),
                       ],
                     ),
-
                     pw.SizedBox(height: 24),
-
-                    // QR Code
                     pw.Center(
                       child: pw.BarcodeWidget(
                         barcode: pw.Barcode.qrCode(),
@@ -282,7 +286,6 @@ class _TicketScreenState extends State<TicketScreen> {
           ),
         );
 
-        // Save PDF to temp directory
         final dir = await getTemporaryDirectory();
         final file = File(
           '${dir.path}/FlixPoint_${widget.orderId}.pdf',
@@ -297,17 +300,10 @@ class _TicketScreenState extends State<TicketScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Error sharing ticket: ${e.toString()}',
-            ),
-            backgroundColor: errorColor,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
+        // AppSnackbar replaces ScaffoldMessenger
+        AppSnackbar.error(
+          context,
+          'Error sharing ticket: ${e.toString()}',
         );
       }
     }
@@ -352,8 +348,10 @@ class _TicketScreenState extends State<TicketScreen> {
       widget.date,
       widget.time,
     );
-    final statusColor = BookingUtils.getStatusColor(status);
-    final statusIcon = BookingUtils.getStatusIcon(status);
+    final statusColor =
+        BookingUtils.getStatusColor(status);
+    final statusIcon =
+        BookingUtils.getStatusIcon(status);
     final isExpired = status == BookingStatus.expired;
     final isToday = status == BookingStatus.today;
     final remaining = BookingUtils.timeRemaining(
@@ -363,42 +361,27 @@ class _TicketScreenState extends State<TicketScreen> {
 
     return Scaffold(
       backgroundColor: mobileBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: mobileBackgroundColor,
-        elevation: 0,
-        automaticallyImplyLeading: false,
-        title: ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [appthemecolor, goldLight],
-          ).createShader(bounds),
-          child: Text(
-            'Booking Confirmed',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: R.sp(18),
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-        centerTitle: true,
+      // AppAppBar replaces custom ShaderMask AppBar
+      appBar: AppAppBar(
+        title: 'Booking Confirmed',
+        showBackButton: false,
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: R.maxWidth),
+          constraints:
+              BoxConstraints(maxWidth: R.maxWidth),
           child: SingleChildScrollView(
             padding: EdgeInsets.all(R.horizontalPadding),
             child: Column(
               children: [
-                // Lottie header
                 _buildLottieHeader(),
-
-                // Ticket slides in after lottie
                 AnimatedOpacity(
-                  duration: const Duration(milliseconds: 600),
+                  duration:
+                      const Duration(milliseconds: 600),
                   opacity: _lottieComplete ? 1.0 : 0.0,
                   child: AnimatedSlide(
-                    duration: const Duration(milliseconds: 600),
+                    duration:
+                        const Duration(milliseconds: 600),
                     offset: _lottieComplete
                         ? Offset.zero
                         : const Offset(0, 0.3),
@@ -445,7 +428,9 @@ class _TicketScreenState extends State<TicketScreen> {
             fontWeight: FontWeight.w800,
             letterSpacing: 0.5,
           ),
-        ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.2),
+        ).animate().fadeIn(delay: 600.ms).slideY(
+              begin: 0.2,
+            ),
         const Gap(6),
         Text(
           'Enjoy your movie experience',
@@ -466,22 +451,11 @@ class _TicketScreenState extends State<TicketScreen> {
     bool isToday,
     String remaining,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: appthemecolor.withValues(alpha: 0.4),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: appthemecolor.withValues(alpha: 0.15),
-            blurRadius: 24,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
+    // AppCard replaces custom Container
+    return AppCard(
+      borderRadius: 20,
+      padding: EdgeInsets.zero,
+      hasGlow: true,
       child: Column(
         children: [
           // Movie backdrop
@@ -499,8 +473,13 @@ class _TicketScreenState extends State<TicketScreen> {
                   width: double.infinity,
                   height: R.isPhone ? 160 : 200,
                   fit: BoxFit.cover,
-                  errorWidget: (context, url, error) =>
-                      Container(
+                  // ShimmerBox replaces plain Container placeholder
+                  placeholder: (_, __) => ShimmerBox(
+                    width: double.infinity,
+                    height: R.isPhone ? 160 : 200,
+                    borderRadius: 0,
+                  ),
+                  errorWidget: (_, __, ___) => Container(
                     height: R.isPhone ? 160 : 200,
                     color: surfaceColor2,
                     child: const Icon(
@@ -516,49 +495,17 @@ class _TicketScreenState extends State<TicketScreen> {
                     gradient: heroGradient,
                   ),
                 ),
-                // Confirmed badge
+                // AppBadge replaces Confirmed badge Container
                 Positioned(
                   top: 12,
                   right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: successColor,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: successColor
-                              .withValues(alpha: 0.4),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.check_circle_rounded,
-                          color: Colors.white,
-                          size: 12,
-                        ),
-                        const Gap(4),
-                        Text(
-                          'Confirmed',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: R.sp(10),
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: AppBadge(
+                    label: 'Confirmed',
+                    icon: Icons.check_circle_rounded,
+                    color: successColor,
+                    hasGlow: true,
                   ),
                 ),
-                // Movie title
                 Positioned(
                   bottom: 12,
                   left: 16,
@@ -590,20 +537,12 @@ class _TicketScreenState extends State<TicketScreen> {
             padding: EdgeInsets.all(R.px(16)),
             child: Column(
               children: [
-                // Cinema name - PROMINENT
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: appthemecolor.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: appthemecolor
-                          .withValues(alpha: 0.2),
-                    ),
-                  ),
+                // Cinema name section
+                AppCard(
+                  backgroundColor: appthemecolor
+                      .withValues(alpha: 0.06),
+                  borderColor: appthemecolor
+                      .withValues(alpha: 0.2),
                   child: Row(
                     children: [
                       const Icon(
@@ -625,8 +564,8 @@ class _TicketScreenState extends State<TicketScreen> {
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            if (widget
-                                .theatreAddress.isNotEmpty)
+                            if (widget.theatreAddress
+                                .isNotEmpty)
                               Text(
                                 widget.theatreAddress,
                                 style: TextStyle(
@@ -634,7 +573,8 @@ class _TicketScreenState extends State<TicketScreen> {
                                   fontSize: R.sp(10),
                                 ),
                                 maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                overflow:
+                                    TextOverflow.ellipsis,
                               ),
                           ],
                         ),
@@ -645,7 +585,7 @@ class _TicketScreenState extends State<TicketScreen> {
 
                 const Gap(14),
 
-                // Date and time
+                // Date and time using TicketDetailWidget
                 Row(
                   children: [
                     Expanded(
@@ -672,7 +612,8 @@ class _TicketScreenState extends State<TicketScreen> {
                   children: [
                     Expanded(
                       child: TicketDetailWidget(
-                        icon: Icons.confirmation_num_rounded,
+                        icon:
+                            Icons.confirmation_num_rounded,
                         label: 'Order ID',
                         value: '#${widget.orderId}',
                       ),
@@ -689,19 +630,13 @@ class _TicketScreenState extends State<TicketScreen> {
 
                 const Gap(14),
 
-                // Seat passengers
+                // Passengers section
                 if (widget.seatPassengers.isNotEmpty) ...[
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: appthemecolor
-                          .withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: appthemecolor
-                            .withValues(alpha: 0.15),
-                      ),
-                    ),
+                  AppCard(
+                    backgroundColor: appthemecolor
+                        .withValues(alpha: 0.06),
+                    borderColor: appthemecolor
+                        .withValues(alpha: 0.15),
                     child: Column(
                       crossAxisAlignment:
                           CrossAxisAlignment.start,
@@ -745,22 +680,21 @@ class _TicketScreenState extends State<TicketScreen> {
                                           BoxDecoration(
                                         color: appthemecolor
                                             .withValues(
-                                          alpha: 0.15,
-                                        ),
+                                                alpha: 0.15),
                                         borderRadius:
                                             BorderRadius
                                                 .circular(6),
                                         border: Border.all(
                                           color: appthemecolor
                                               .withValues(
-                                            alpha: 0.3,
-                                          ),
+                                                  alpha: 0.3),
                                         ),
                                       ),
                                       child: Text(
                                         entry.key,
                                         style: TextStyle(
-                                          color: appthemecolor,
+                                          color:
+                                              appthemecolor,
                                           fontSize: R.sp(10),
                                           fontWeight:
                                               FontWeight.w800,
@@ -791,8 +725,8 @@ class _TicketScreenState extends State<TicketScreen> {
                               ),
                             )
                             .toList(),
-                        if (widget
-                            .passengerEmail.isNotEmpty) ...[
+                        if (widget.passengerEmail
+                            .isNotEmpty) ...[
                           Divider(
                             color: appthemecolor
                                 .withValues(alpha: 0.1),
@@ -827,13 +761,14 @@ class _TicketScreenState extends State<TicketScreen> {
 
           const DashedDivider(),
 
-          // QR Code
+          // QR code section
           Padding(
             padding: EdgeInsets.all(R.px(16)),
             child: Column(
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment:
+                      MainAxisAlignment.center,
                   children: [
                     const Icon(
                       Icons.qr_code_scanner_rounded,
@@ -879,8 +814,10 @@ class _TicketScreenState extends State<TicketScreen> {
                       eyeShape: QrEyeShape.square,
                       color: Colors.black,
                     ),
-                    dataModuleStyle: const QrDataModuleStyle(
-                      dataModuleShape: QrDataModuleShape.square,
+                    dataModuleStyle:
+                        const QrDataModuleStyle(
+                      dataModuleShape:
+                          QrDataModuleShape.square,
                       color: Colors.black,
                     ),
                   ),
@@ -896,43 +833,16 @@ class _TicketScreenState extends State<TicketScreen> {
                   ),
                 ),
                 const Gap(10),
-
-                // Show status badge
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: statusColor.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        statusIcon,
-                        color: statusColor,
-                        size: 14,
-                      ),
-                      const Gap(6),
-                      Text(
-                        isExpired
-                            ? 'Show has ended'
-                            : isToday
-                                ? 'Show today — $remaining'
-                                : 'Show $remaining',
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: R.sp(11),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
+                // AppBadge replaces status badge Container
+                AppBadge(
+                  label: isExpired
+                      ? 'Show has ended'
+                      : isToday
+                          ? 'Show today — $remaining'
+                          : 'Show $remaining',
+                  icon: statusIcon,
+                  color: statusColor,
+                  hasGlow: !isExpired,
                 ),
               ],
             ),
@@ -945,100 +855,27 @@ class _TicketScreenState extends State<TicketScreen> {
   Widget _buildActionButtons() {
     return Row(
       children: [
-        // Share Ticket
+        // AppButton replaces Share GestureDetector+Container
         Expanded(
-          child: GestureDetector(
-            onTap: _isSharing ? null : _shareTicket,
-            child: Container(
-              height: 56,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [appthemecolor, goldDark],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(
-                    color: appthemecolor.withValues(alpha: 0.4),
-                    blurRadius: 16,
-                    spreadRadius: 1,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              alignment: Alignment.center,
-              child: _isSharing
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.black,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.share_rounded,
-                          color: Colors.black,
-                          size: 18,
-                        ),
-                        const Gap(8),
-                        Text(
-                          'Share Ticket',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: R.sp(14),
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
+          child: AppButton(
+            label: 'Share Ticket',
+            icon: Icons.share_rounded,
+            isLoading: _isSharing,
+            height: 56,
+            onTap: _shareTicket,
           ),
         ),
-
         const Gap(12),
-
-        // Done
+        // AppButton replaces Done GestureDetector+Container
         Expanded(
-          child: GestureDetector(
+          child: AppButton(
+            label: 'Done',
+            icon: Icons.check_circle_rounded,
+            isGradient: false,
+            isOutlined: true,
+            height: 56,
             onTap: () => Navigator.of(context)
                 .popUntil((route) => route.isFirst),
-            child: Container(
-              height: 56,
-              decoration: BoxDecoration(
-                color: surfaceColor,
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(
-                  color: appthemecolor,
-                  width: 1.5,
-                ),
-              ),
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.check_circle_rounded,
-                    color: appthemecolor,
-                    size: 18,
-                  ),
-                  const Gap(8),
-                  Text(
-                    'Done',
-                    style: TextStyle(
-                      color: appthemecolor,
-                      fontSize: R.sp(14),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
         ),
       ],

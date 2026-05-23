@@ -6,6 +6,7 @@ import 'package:movieticket/models/tmdb_movie.dart';
 import 'package:movieticket/services/tmdb_service.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/responsive.dart';
+import 'package:movieticket/widgets/movie/watchlist_button.dart';
 
 class MovieCardWidget extends StatelessWidget {
   final TmdbMovie movie;
@@ -68,7 +69,8 @@ class MovieCardWidget extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Optional badge
+
+                  // Badge (top left)
                   if (badgeText != null)
                     Positioned(
                       top: 8,
@@ -101,13 +103,23 @@ class MovieCardWidget extends StatelessWidget {
                         ),
                       ),
                     ),
+
+                  // Watchlist button (top right)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: WatchlistButton(
+                      movie: movie,
+                      size: 14,
+                    ),
+                  ),
                 ],
               ),
             ),
 
             const Gap(6),
 
-            // Title below poster
+            // Title
             Text(
               movie.title,
               style: TextStyle(

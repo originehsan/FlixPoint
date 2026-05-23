@@ -9,9 +9,9 @@ import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/constants.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/utils/page_transitions.dart';
-import 'package:movieticket/widgets/cinema_screen_painter.dart';
-import 'package:movieticket/widgets/seat_legend.dart';
-import 'package:movieticket/widgets/seat_widget.dart';
+import 'package:movieticket/widgets/cinema/cinema_screen_painter.dart';
+import 'package:movieticket/widgets/cinema/seat_legend.dart';
+import 'package:movieticket/widgets/cinema/seat_widget.dart';
 import 'package:provider/provider.dart';
 import 'package:movieticket/screens/passenger_details_screen.dart';
 
@@ -28,7 +28,7 @@ class SeatSelection extends StatefulWidget {
     required this.theatreName,
     required this.theatreAddress,
     required this.theatreLogo,
-    required this.cinemaId,
+    required this.cinemaId, required String preSelectedTime,
   });
 
   @override
@@ -81,8 +81,18 @@ class _SeatSelectionState extends State<SeatSelection> {
   void _generateDates() {
     final now = DateTime.now();
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
     ];
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     _dates = List.generate(7, (index) {
@@ -110,14 +120,12 @@ class _SeatSelectionState extends State<SeatSelection> {
       if (doc.exists) {
         final data = doc.data()!;
         _booked = List<String>.from(data['booked'] ?? []);
-        final lockedData =
-            Map<String, dynamic>.from(data['locked'] ?? {});
+        final lockedData = Map<String, dynamic>.from(data['locked'] ?? {});
         final now = DateTime.now();
         final expiredSeats = <String>[];
 
         lockedData.forEach((seat, lockInfo) {
-          final expiresAt =
-              (lockInfo['expiresAt'] as Timestamp).toDate();
+          final expiresAt = (lockInfo['expiresAt'] as Timestamp).toDate();
           if (expiresAt.isBefore(now)) {
             expiredSeats.add(seat);
           }
@@ -138,8 +146,7 @@ class _SeatSelectionState extends State<SeatSelection> {
         }
 
         _locked = lockedData.map(
-          (key, value) =>
-              MapEntry(key, Map<String, dynamic>.from(value)),
+          (key, value) => MapEntry(key, Map<String, dynamic>.from(value)),
         );
       } else {
         _booked = [];
@@ -162,8 +169,7 @@ class _SeatSelectionState extends State<SeatSelection> {
           .set({
         'locked': {
           seatName: {
-            'userId':
-                FirebaseAuth.instance.currentUser?.uid ?? '',
+            'userId': FirebaseAuth.instance.currentUser?.uid ?? '',
             'lockedAt': Timestamp.fromDate(now),
             'expiresAt': Timestamp.fromDate(expiresAt),
           }
@@ -433,8 +439,7 @@ class _SeatSelectionState extends State<SeatSelection> {
             // Seat rows
             ...List.generate(rows, (row) {
               final rowIndex = currentOffset + row;
-              final rowLabel =
-                  String.fromCharCode(65 + rowIndex);
+              final rowLabel = String.fromCharCode(65 + rowIndex);
 
               return Padding(
                 padding: EdgeInsets.symmetric(
@@ -461,8 +466,7 @@ class _SeatSelectionState extends State<SeatSelection> {
 
                     // Left seats
                     ...List.generate(cols ~/ 2, (col) {
-                      final seatName =
-                          '$rowLabel${col + 1}';
+                      final seatName = '$rowLabel${col + 1}';
                       return Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: R.px(2),
@@ -471,8 +475,7 @@ class _SeatSelectionState extends State<SeatSelection> {
                           seatName: seatName,
                           state: _getSeatState(seatName),
                           tierColor: tierColor,
-                          onTap: () =>
-                              _toggleSeat(seatName),
+                          onTap: () => _toggleSeat(seatName),
                         ),
                       );
                     }),
@@ -481,11 +484,9 @@ class _SeatSelectionState extends State<SeatSelection> {
                     SizedBox(width: R.px(16)),
 
                     // Right seats
-                    ...List.generate(
-                        cols - cols ~/ 2, (col) {
+                    ...List.generate(cols - cols ~/ 2, (col) {
                       final seatNum = cols ~/ 2 + col + 1;
-                      final seatName =
-                          '$rowLabel$seatNum';
+                      final seatName = '$rowLabel$seatNum';
                       return Padding(
                         padding: EdgeInsets.symmetric(
                           horizontal: R.px(2),
@@ -494,8 +495,7 @@ class _SeatSelectionState extends State<SeatSelection> {
                           seatName: seatName,
                           state: _getSeatState(seatName),
                           tierColor: tierColor,
-                          onTap: () =>
-                              _toggleSeat(seatName),
+                          onTap: () => _toggleSeat(seatName),
                         ),
                       );
                     }),
@@ -595,9 +595,7 @@ class _SeatSelectionState extends State<SeatSelection> {
                     margin: const EdgeInsets.only(right: 10),
                     width: 58,
                     decoration: BoxDecoration(
-                      color: isSelected
-                          ? appthemecolor
-                          : surfaceColor,
+                      color: isSelected ? appthemecolor : surfaceColor,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: isSelected
@@ -608,8 +606,7 @@ class _SeatSelectionState extends State<SeatSelection> {
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: appthemecolor
-                                    .withValues(alpha: 0.4),
+                                color: appthemecolor.withValues(alpha: 0.4),
                                 blurRadius: 10,
                                 spreadRadius: 1,
                               ),
@@ -633,9 +630,7 @@ class _SeatSelectionState extends State<SeatSelection> {
                         Text(
                           _dates[index]['date_num'],
                           style: TextStyle(
-                            color: isSelected
-                                ? Colors.black
-                                : primaryColor,
+                            color: isSelected ? Colors.black : primaryColor,
                             fontSize: R.sp(20),
                             fontWeight: FontWeight.w800,
                           ),
@@ -728,8 +723,7 @@ class _SeatSelectionState extends State<SeatSelection> {
                     boxShadow: isSelected
                         ? [
                             BoxShadow(
-                              color: appthemecolor
-                                  .withValues(alpha: 0.2),
+                              color: appthemecolor.withValues(alpha: 0.2),
                               blurRadius: 8,
                               spreadRadius: 1,
                             ),
@@ -739,13 +733,10 @@ class _SeatSelectionState extends State<SeatSelection> {
                   child: Text(
                     _showTimes[index],
                     style: TextStyle(
-                      color: isSelected
-                          ? appthemecolor
-                          : secondaryColor,
+                      color: isSelected ? appthemecolor : secondaryColor,
                       fontSize: R.sp(12),
-                      fontWeight: isSelected
-                          ? FontWeight.w700
-                          : FontWeight.w400,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w400,
                     ),
                   ),
                 ),
@@ -804,12 +795,10 @@ class _SeatSelectionState extends State<SeatSelection> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color:
-                              appthemecolor.withValues(alpha: 0.15),
+                          color: appthemecolor.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color:
-                                appthemecolor.withValues(alpha: 0.4),
+                            color: appthemecolor.withValues(alpha: 0.4),
                           ),
                         ),
                         child: Text(
@@ -878,34 +867,32 @@ class _SeatSelectionState extends State<SeatSelection> {
               GestureDetector(
                 onTap: hasSeats
                     ? () {
-                        final bookingProvider =
-                            Provider.of<BookingProvider>(
+                        final bookingProvider = Provider.of<BookingProvider>(
                           context,
                           listen: false,
                         );
                         bookingProvider.setSeats(_selected);
                         bookingProvider.setDate(_selectedDate);
                         bookingProvider.setTime(_selectedTime);
-                        bookingProvider
-                            .setTimingDocId(_timingDocId);
+                        bookingProvider.setTimingDocId(_timingDocId);
 
                         Navigator.push(
-  context,
-  AppRoutes.slideUpRoute(
-    PassengerDetailsScreen(
-      movie: widget.movie,
-      amount: price,
-      seats: _selected,
-      date: _selectedDate,
-      time: _selectedTime,
-      theatreName: widget.theatreName,
-      theatreAddress: widget.theatreAddress,
-      theatreIcon: widget.theatreLogo,
-      cinemaId: widget.cinemaId,
-      timingDocId: _timingDocId,
-    ),
-  ),
-);
+                          context,
+                          AppRoutes.slideUpRoute(
+                            PassengerDetailsScreen(
+                              movie: widget.movie,
+                              amount: price,
+                              seats: _selected,
+                              date: _selectedDate,
+                              time: _selectedTime,
+                              theatreName: widget.theatreName,
+                              theatreAddress: widget.theatreAddress,
+                              theatreIcon: widget.theatreLogo,
+                              cinemaId: widget.cinemaId,
+                              timingDocId: _timingDocId,
+                            ),
+                          ),
+                        );
                       }
                     : null,
                 child: AnimatedContainer(
@@ -933,8 +920,7 @@ class _SeatSelectionState extends State<SeatSelection> {
                     boxShadow: hasSeats
                         ? [
                             BoxShadow(
-                              color: appthemecolor
-                                  .withValues(alpha: 0.4),
+                              color: appthemecolor.withValues(alpha: 0.4),
                               blurRadius: 16,
                               spreadRadius: 2,
                             ),
@@ -949,8 +935,7 @@ class _SeatSelectionState extends State<SeatSelection> {
                         style: TextStyle(
                           color: hasSeats
                               ? Colors.black
-                              : appthemecolor
-                                  .withValues(alpha: 0.4),
+                              : appthemecolor.withValues(alpha: 0.4),
                           fontSize: R.sp(14),
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.5,

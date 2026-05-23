@@ -7,6 +7,7 @@ class TmdbMovie {
   final double voteAverage;
   final String releaseDate;
   final List<int> genreIds;
+  final String? originalLanguage; // ADD THIS
 
   TmdbMovie({
     required this.id,
@@ -17,6 +18,7 @@ class TmdbMovie {
     required this.voteAverage,
     required this.releaseDate,
     required this.genreIds,
+    this.originalLanguage, // ADD THIS
   });
 
   factory TmdbMovie.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class TmdbMovie {
       voteAverage: (json['vote_average'] ?? 0).toDouble(),
       releaseDate: json['release_date'] ?? '',
       genreIds: List<int>.from(json['genre_ids'] ?? []),
+      originalLanguage: json['original_language'], // ADD THIS
     );
   }
 

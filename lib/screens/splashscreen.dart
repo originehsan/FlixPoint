@@ -8,6 +8,7 @@ import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/navbar.dart';
 import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
+import 'package:movieticket/widgets/common/loaders/app_loader.dart';
 import 'package:provider/provider.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -153,9 +154,7 @@ class _SplashScreenState extends State<SplashScreen>
     await userProvider.initialize();
     if (mounted) {
       setState(() {
-        _name = userProvider.name.isNotEmpty
-            ? userProvider.name
-            : 'User';
+        _name = userProvider.name.isNotEmpty ? userProvider.name : 'User';
       });
     }
   }
@@ -192,11 +191,10 @@ class _SplashScreenState extends State<SplashScreen>
                 ),
 
               // Scan line
-              if (_scanController.value > 0 &&
-                  _scanController.value < 1)
+              if (_scanController.value > 0 && _scanController.value < 1)
                 Positioned(
-                  top: MediaQuery.of(context).size.height *
-                      _scanAnimation.value,
+                  top:
+                      MediaQuery.of(context).size.height * _scanAnimation.value,
                   left: 0,
                   right: 0,
                   child: Container(
@@ -255,13 +253,13 @@ class _SplashScreenState extends State<SplashScreen>
                                   shadows: isRevealed
                                       ? [
                                           Shadow(
-                                            color: appthemecolor
-                                                .withValues(alpha: 0.8),
+                                            color: appthemecolor.withValues(
+                                                alpha: 0.8),
                                             blurRadius: 20,
                                           ),
                                           Shadow(
-                                            color: goldLight
-                                                .withValues(alpha: 0.4),
+                                            color: goldLight.withValues(
+                                                alpha: 0.4),
                                             blurRadius: 40,
                                           ),
                                         ]
@@ -273,14 +271,11 @@ class _SplashScreenState extends State<SplashScreen>
                         },
                       ),
                     ),
-
                     const SizedBox(height: 8),
-
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 800),
-                      width: _revealedLetters >= _logoText.length
-                          ? R.wp(55)
-                          : 0,
+                      width:
+                          _revealedLetters >= _logoText.length ? R.wp(55) : 0,
                       height: 1.5,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
@@ -301,9 +296,7 @@ class _SplashScreenState extends State<SplashScreen>
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 20),
-
                     if (_showTagline)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -321,11 +314,10 @@ class _SplashScreenState extends State<SplashScreen>
                             animation: _grainController,
                             builder: (context, child) {
                               return Opacity(
-                                opacity: (_grainController.value * 10)
-                                        .floor()
-                                        .isEven
-                                    ? 1.0
-                                    : 0.0,
+                                opacity:
+                                    (_grainController.value * 10).floor().isEven
+                                        ? 1.0
+                                        : 0.0,
                                 child: Container(
                                   width: 2,
                                   height: R.sp(14),
@@ -419,9 +411,10 @@ class OpeningScreen extends StatelessWidget {
             }
           }
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(
-                color: appthemecolor,
+            return const Scaffold(
+              backgroundColor: mobileBackgroundColor,
+              body: Center(
+                child: AppLoader(),
               ),
             );
           }
