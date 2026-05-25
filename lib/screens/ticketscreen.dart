@@ -11,10 +11,10 @@ import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/widgets/common/app_badge.dart';
 import 'package:movieticket/widgets/common/app_button.dart';
-import 'package:movieticket/widgets/common/appbar/app_appbar.dart';
-import 'package:movieticket/widgets/common/cards/app_card.dart';
+import 'package:movieticket/widgets/common/app_appbar.dart';
+import 'package:movieticket/widgets/common/app_card.dart';
 import 'package:movieticket/widgets/common/shimmer_box.dart';
-import 'package:movieticket/widgets/common/snackbars/app_snackbar.dart';
+import 'package:movieticket/widgets/common/app_snackbar.dart';
 import 'package:movieticket/widgets/ticket/dashed_divider.dart';
 import 'package:movieticket/widgets/ticket/ticket_detail_widget.dart';
 import 'package:path_provider/path_provider.dart';
@@ -23,6 +23,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import 'dart:io';
+import 'package:http/http.dart' as http;
 
 class TicketScreen extends StatefulWidget {
   final String bookingId;
@@ -55,8 +56,7 @@ class TicketScreen extends StatefulWidget {
   });
 
   @override
-  State<TicketScreen> createState() =>
-      _TicketScreenState();
+  State<TicketScreen> createState() => _TicketScreenState();
 }
 
 class _TicketScreenState extends State<TicketScreen> {
@@ -77,15 +77,14 @@ class _TicketScreenState extends State<TicketScreen> {
     );
   }
 
-  Future<void> _shareTicket() async {
+ Future<void> _shareTicket() async {
     setState(() => _isSharing = true);
     try {
       final passengersText = widget.seatPassengers.entries
           .map((e) => '  ${e.key} → ${e.value}')
           .join('\n');
 
-      final shareText =
-          'FlixPoint Ticket — ${widget.movie.title}\n\n'
+      final shareText = 'FlixPoint Ticket — ${widget.movie.title}\n\n'
           'Cinema: ${widget.theatreName}\n'
           'Date: ${widget.date}\n'
           'Time: ${widget.time}\n'
@@ -99,7 +98,19 @@ class _TicketScreenState extends State<TicketScreen> {
           ShareParams(text: shareText),
         );
       } else {
-        final pdf = pw.Document();
+        // Fetch Noto Sans from Google Fonts CDN for ₹ support
+        final response = await http.get(Uri.parse(
+  'https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf',
+));
+        final ttf = pw.Font.ttf(response.bodyBytes.buffer.asByteData());
+
+        final pdf = pw.Document(
+          theme: pw.ThemeData.withFont(
+            base: ttf,
+            bold: ttf,
+          ),
+        );
+
         pdf.addPage(
           pw.Page(
             pageFormat: PdfPageFormat.a4,
@@ -111,14 +122,12 @@ class _TicketScreenState extends State<TicketScreen> {
                     color: PdfColors.amber,
                     width: 2,
                   ),
-                  borderRadius:
-                      const pw.BorderRadius.all(
+                  borderRadius: const pw.BorderRadius.all(
                     pw.Radius.circular(12),
                   ),
                 ),
                 child: pw.Column(
-                  crossAxisAlignment:
-                      pw.CrossAxisAlignment.start,
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Row(
                       mainAxisAlignment:
@@ -132,8 +141,7 @@ class _TicketScreenState extends State<TicketScreen> {
                               'FlixPoint',
                               style: pw.TextStyle(
                                 fontSize: 32,
-                                fontWeight:
-                                    pw.FontWeight.bold,
+                                fontWeight: pw.FontWeight.bold,
                                 color: PdfColors.amber,
                               ),
                             ),
@@ -147,15 +155,13 @@ class _TicketScreenState extends State<TicketScreen> {
                           ],
                         ),
                         pw.Container(
-                          padding:
-                              const pw.EdgeInsets.symmetric(
+                          padding: const pw.EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 6,
                           ),
                           decoration: pw.BoxDecoration(
                             color: PdfColors.green,
-                            borderRadius:
-                                const pw.BorderRadius.all(
+                            borderRadius: const pw.BorderRadius.all(
                               pw.Radius.circular(6),
                             ),
                           ),
@@ -163,8 +169,7 @@ class _TicketScreenState extends State<TicketScreen> {
                             'CONFIRMED',
                             style: pw.TextStyle(
                               fontSize: 12,
-                              fontWeight:
-                                  pw.FontWeight.bold,
+                              fontWeight: pw.FontWeight.bold,
                               color: PdfColors.white,
                             ),
                           ),
@@ -181,21 +186,13 @@ class _TicketScreenState extends State<TicketScreen> {
                       ),
                     ),
                     pw.SizedBox(height: 20),
-                    _pdfRow(
-                      'Order ID',
-                      '#${widget.orderId}',
-                    ),
+                    _pdfRow('Order ID', '#${widget.orderId}'),
                     _pdfRow('Cinema', widget.theatreName),
-                    _pdfRow(
-                        'Address', widget.theatreAddress),
+                    _pdfRow('Address', widget.theatreAddress),
                     _pdfRow('Date', widget.date),
                     _pdfRow('Time', widget.time),
-                    _pdfRow(
-                      'Seats',
-                      widget.seats.join(', '),
-                    ),
-                    if (widget
-                        .seatPassengers.isNotEmpty) ...[
+                    _pdfRow('Seats', widget.seats.join(', ')),
+                    if (widget.seatPassengers.isNotEmpty) ...[
                       pw.SizedBox(height: 8),
                       pw.Text(
                         'Passengers:',
@@ -205,25 +202,21 @@ class _TicketScreenState extends State<TicketScreen> {
                         ),
                       ),
                       pw.SizedBox(height: 4),
-                      ...widget.seatPassengers.entries
-                          .map(
-                            (e) => pw.Padding(
-                              padding:
-                                  const pw.EdgeInsets.only(
-                                bottom: 4,
-                                left: 8,
-                              ),
-                              child: pw.Text(
-                                '${e.key}  →  ${e.value}',
-                                style: pw.TextStyle(
-                                  fontSize: 12,
-                                  fontWeight:
-                                      pw.FontWeight.bold,
-                                ),
-                              ),
+                      ...widget.seatPassengers.entries.map(
+                        (e) => pw.Padding(
+                          padding: const pw.EdgeInsets.only(
+                            bottom: 4,
+                            left: 8,
+                          ),
+                          child: pw.Text(
+                            '${e.key}  →  ${e.value}',
+                            style: pw.TextStyle(
+                              fontSize: 12,
+                              fontWeight: pw.FontWeight.bold,
                             ),
-                          )
-                          .toList(),
+                          ),
+                        ),
+                      ),
                     ],
                     if (widget.passengerEmail.isNotEmpty)
                       _pdfRow('Email', widget.passengerEmail),
@@ -300,7 +293,6 @@ class _TicketScreenState extends State<TicketScreen> {
       }
     } catch (e) {
       if (mounted) {
-        // AppSnackbar replaces ScaffoldMessenger
         AppSnackbar.error(
           context,
           'Error sharing ticket: ${e.toString()}',
@@ -348,10 +340,8 @@ class _TicketScreenState extends State<TicketScreen> {
       widget.date,
       widget.time,
     );
-    final statusColor =
-        BookingUtils.getStatusColor(status);
-    final statusIcon =
-        BookingUtils.getStatusIcon(status);
+    final statusColor = BookingUtils.getStatusColor(status);
+    final statusIcon = BookingUtils.getStatusIcon(status);
     final isExpired = status == BookingStatus.expired;
     final isToday = status == BookingStatus.today;
     final remaining = BookingUtils.timeRemaining(
@@ -368,23 +358,19 @@ class _TicketScreenState extends State<TicketScreen> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints:
-              BoxConstraints(maxWidth: R.maxWidth),
+          constraints: BoxConstraints(maxWidth: R.maxWidth),
           child: SingleChildScrollView(
             padding: EdgeInsets.all(R.horizontalPadding),
             child: Column(
               children: [
                 _buildLottieHeader(),
                 AnimatedOpacity(
-                  duration:
-                      const Duration(milliseconds: 600),
+                  duration: const Duration(milliseconds: 600),
                   opacity: _lottieComplete ? 1.0 : 0.0,
                   child: AnimatedSlide(
-                    duration:
-                        const Duration(milliseconds: 600),
-                    offset: _lottieComplete
-                        ? Offset.zero
-                        : const Offset(0, 0.3),
+                    duration: const Duration(milliseconds: 600),
+                    offset:
+                        _lottieComplete ? Offset.zero : const Offset(0, 0.3),
                     curve: Curves.easeOut,
                     child: Column(
                       children: [
@@ -539,10 +525,8 @@ class _TicketScreenState extends State<TicketScreen> {
               children: [
                 // Cinema name section
                 AppCard(
-                  backgroundColor: appthemecolor
-                      .withValues(alpha: 0.06),
-                  borderColor: appthemecolor
-                      .withValues(alpha: 0.2),
+                  backgroundColor: appthemecolor.withValues(alpha: 0.06),
+                  borderColor: appthemecolor.withValues(alpha: 0.2),
                   child: Row(
                     children: [
                       const Icon(
@@ -553,8 +537,7 @@ class _TicketScreenState extends State<TicketScreen> {
                       const Gap(10),
                       Expanded(
                         child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               widget.theatreName,
@@ -564,8 +547,7 @@ class _TicketScreenState extends State<TicketScreen> {
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
-                            if (widget.theatreAddress
-                                .isNotEmpty)
+                            if (widget.theatreAddress.isNotEmpty)
                               Text(
                                 widget.theatreAddress,
                                 style: TextStyle(
@@ -573,8 +555,7 @@ class _TicketScreenState extends State<TicketScreen> {
                                   fontSize: R.sp(10),
                                 ),
                                 maxLines: 1,
-                                overflow:
-                                    TextOverflow.ellipsis,
+                                overflow: TextOverflow.ellipsis,
                               ),
                           ],
                         ),
@@ -612,8 +593,7 @@ class _TicketScreenState extends State<TicketScreen> {
                   children: [
                     Expanded(
                       child: TicketDetailWidget(
-                        icon:
-                            Icons.confirmation_num_rounded,
+                        icon: Icons.confirmation_num_rounded,
                         label: 'Order ID',
                         value: '#${widget.orderId}',
                       ),
@@ -633,13 +613,10 @@ class _TicketScreenState extends State<TicketScreen> {
                 // Passengers section
                 if (widget.seatPassengers.isNotEmpty) ...[
                   AppCard(
-                    backgroundColor: appthemecolor
-                        .withValues(alpha: 0.06),
-                    borderColor: appthemecolor
-                        .withValues(alpha: 0.15),
+                    backgroundColor: appthemecolor.withValues(alpha: 0.06),
+                    borderColor: appthemecolor.withValues(alpha: 0.15),
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
@@ -660,76 +637,60 @@ class _TicketScreenState extends State<TicketScreen> {
                           ],
                         ),
                         const Gap(10),
-                        ...widget.seatPassengers.entries
-                            .map(
-                              (entry) => Padding(
-                                padding:
-                                    const EdgeInsets.only(
-                                  bottom: 6,
+                        ...widget.seatPassengers.entries.map(
+                          (entry) => Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: 6,
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        appthemecolor.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color:
+                                          appthemecolor.withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    entry.key,
+                                    style: TextStyle(
+                                      color: appthemecolor,
+                                      fontSize: R.sp(10),
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding:
-                                          const EdgeInsets
-                                              .symmetric(
-                                        horizontal: 8,
-                                        vertical: 3,
-                                      ),
-                                      decoration:
-                                          BoxDecoration(
-                                        color: appthemecolor
-                                            .withValues(
-                                                alpha: 0.15),
-                                        borderRadius:
-                                            BorderRadius
-                                                .circular(6),
-                                        border: Border.all(
-                                          color: appthemecolor
-                                              .withValues(
-                                                  alpha: 0.3),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        entry.key,
-                                        style: TextStyle(
-                                          color:
-                                              appthemecolor,
-                                          fontSize: R.sp(10),
-                                          fontWeight:
-                                              FontWeight.w800,
-                                        ),
-                                      ),
-                                    ),
-                                    const Gap(8),
-                                    const Icon(
-                                      Icons
-                                          .arrow_forward_rounded,
-                                      color: secondaryColor,
-                                      size: 12,
-                                    ),
-                                    const Gap(8),
-                                    Expanded(
-                                      child: Text(
-                                        entry.value,
-                                        style: TextStyle(
-                                          color: primaryColor,
-                                          fontSize: R.sp(12),
-                                          fontWeight:
-                                              FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                const Gap(8),
+                                const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  color: secondaryColor,
+                                  size: 12,
                                 ),
-                              ),
-                            )
-                            .toList(),
-                        if (widget.passengerEmail
-                            .isNotEmpty) ...[
+                                const Gap(8),
+                                Expanded(
+                                  child: Text(
+                                    entry.value,
+                                    style: TextStyle(
+                                      color: primaryColor,
+                                      fontSize: R.sp(12),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (widget.passengerEmail.isNotEmpty) ...[
                           Divider(
-                            color: appthemecolor
-                                .withValues(alpha: 0.1),
+                            color: appthemecolor.withValues(alpha: 0.1),
                             height: 12,
                           ),
                           Row(
@@ -767,8 +728,7 @@ class _TicketScreenState extends State<TicketScreen> {
             child: Column(
               children: [
                 Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(
                       Icons.qr_code_scanner_rounded,
@@ -798,8 +758,7 @@ class _TicketScreenState extends State<TicketScreen> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: appthemecolor
-                            .withValues(alpha: 0.3),
+                        color: appthemecolor.withValues(alpha: 0.3),
                         blurRadius: 20,
                         spreadRadius: 2,
                       ),
@@ -814,10 +773,8 @@ class _TicketScreenState extends State<TicketScreen> {
                       eyeShape: QrEyeShape.square,
                       color: Colors.black,
                     ),
-                    dataModuleStyle:
-                        const QrDataModuleStyle(
-                      dataModuleShape:
-                          QrDataModuleShape.square,
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
                       color: Colors.black,
                     ),
                   ),
@@ -874,8 +831,8 @@ class _TicketScreenState extends State<TicketScreen> {
             isGradient: false,
             isOutlined: true,
             height: 56,
-            onTap: () => Navigator.of(context)
-                .popUntil((route) => route.isFirst),
+            onTap: () =>
+                Navigator.of(context).popUntil((route) => route.isFirst),
           ),
         ),
       ],

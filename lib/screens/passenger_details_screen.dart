@@ -6,10 +6,10 @@ import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/widgets/common/app_button.dart';
-import 'package:movieticket/widgets/common/appbar/app_appbar.dart';
-import 'package:movieticket/widgets/common/cards/app_card.dart';
-import 'package:movieticket/widgets/common/snackbars/app_snackbar.dart';
-import 'package:movieticket/widgets/common/spacing/gold_divider.dart';
+import 'package:movieticket/widgets/common/app_appbar.dart';
+import 'package:movieticket/widgets/common/app_card.dart';
+import 'package:movieticket/widgets/common/app_snackbar.dart';
+import 'package:movieticket/widgets/common/gold_divider.dart';
 import 'package:movieticket/widgets/text_field.dart';
 import 'package:movieticket/widgets/ticket/ticket_detail_widget.dart';
 

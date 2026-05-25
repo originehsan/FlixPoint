@@ -17,8 +17,7 @@ import 'package:movieticket/utils/indian_filter.dart';
 import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/widgets/common/app_badge.dart';
-import 'package:movieticket/widgets/common/app_button.dart';
-import 'package:movieticket/widgets/common/loaders/app_loader.dart';
+import 'package:movieticket/widgets/common/app_loader.dart';
 import 'package:movieticket/widgets/common/section_header.dart';
 import 'package:movieticket/widgets/common/shimmer_box.dart';
 import 'package:movieticket/widgets/movie/movie_card_widget.dart';
@@ -207,6 +206,10 @@ class _HomescreenState extends State<Homescreen> {
                       if (_isOffline)
                         OfflineBanner(
                           onRetry: () async {
+                            final movieProvider = Provider.of<MovieProvider>(
+                              context,
+                              listen: false,
+                            );
                             final result =
                                 await Connectivity().checkConnectivity();
                             if (mounted) {
@@ -216,10 +219,7 @@ class _HomescreenState extends State<Homescreen> {
                                 );
                               });
                               if (!_isOffline) {
-                                Provider.of<MovieProvider>(
-                                  context,
-                                  listen: false,
-                                ).refresh();
+                                movieProvider.refresh();
                               }
                             }
                           },

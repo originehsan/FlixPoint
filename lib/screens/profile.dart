@@ -13,12 +13,12 @@ import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/widgets/common/app_badge.dart';
 import 'package:movieticket/widgets/common/app_button.dart';
-import 'package:movieticket/widgets/common/cards/app_card.dart';
-import 'package:movieticket/widgets/common/dialogs/confirm_dialog.dart';
+import 'package:movieticket/widgets/common/app_card.dart';
+import 'package:movieticket/widgets/common/confirm_dialog.dart';
 import 'package:movieticket/widgets/common/section_header.dart';
 import 'package:movieticket/widgets/common/shimmer_box.dart';
-import 'package:movieticket/widgets/common/snackbars/app_snackbar.dart';
-import 'package:movieticket/widgets/common/spacing/gold_divider.dart';
+import 'package:movieticket/widgets/common/app_snackbar.dart';
+import 'package:movieticket/widgets/common/gold_divider.dart';
 
 import 'package:provider/provider.dart';
 
@@ -26,12 +26,10 @@ class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() =>
-      _ProfileScreenState();
+  State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState
-    extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoggingOut = false;
 
   Future<void> _handleLogout(
@@ -40,8 +38,7 @@ class _ProfileScreenState
     await ConfirmDialog.show(
       context,
       title: 'Sign Out',
-      message:
-          'Are you sure you want to sign out of FlixPoint?',
+      message: 'Are you sure you want to sign out of FlixPoint?',
       confirmText: 'Sign Out',
       confirmColor: errorColor,
       icon: Icons.logout_rounded,
@@ -72,8 +69,7 @@ class _ProfileScreenState
             mainAxisSize: MainAxisSize.min,
             children: [
               ShaderMask(
-                shaderCallback: (bounds) =>
-                    const LinearGradient(
+                shaderCallback: (bounds) => const LinearGradient(
                   colors: [appthemecolor, goldLight],
                 ).createShader(bounds),
                 child: Text(
@@ -96,10 +92,8 @@ class _ProfileScreenState
               ),
               const Gap(16),
               AppCard(
-                backgroundColor: appthemecolor
-                    .withValues(alpha: 0.06),
-                borderColor: appthemecolor
-                    .withValues(alpha: 0.15),
+                backgroundColor: appthemecolor.withValues(alpha: 0.06),
+                borderColor: appthemecolor.withValues(alpha: 0.15),
                 child: Text(
                   'FlixPoint is a premium movie booking '
                   'app. Book tickets, manage your watchlist '
@@ -114,8 +108,7 @@ class _ProfileScreenState
               ),
               const Gap(16),
               Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(
                     Icons.code_rounded,
@@ -149,10 +142,8 @@ class _ProfileScreenState
   @override
   Widget build(BuildContext context) {
     R.init(context);
-    final userProvider =
-        Provider.of<UserProvider>(context);
-    final uid =
-        FirebaseAuth.instance.currentUser?.uid ?? '';
+    final userProvider = Provider.of<UserProvider>(context);
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     if (userProvider.isLoading) {
       return Scaffold(
@@ -191,8 +182,7 @@ class _ProfileScreenState
       backgroundColor: mobileBackgroundColor,
       body: Center(
         child: ConstrainedBox(
-          constraints:
-              BoxConstraints(maxWidth: R.maxWidth),
+          constraints: BoxConstraints(maxWidth: R.maxWidth),
           child: CustomScrollView(
             slivers: [
               SliverAppBar(
@@ -202,8 +192,7 @@ class _ProfileScreenState
                 elevation: 0,
                 automaticallyImplyLeading: false,
                 title: ShaderMask(
-                  shaderCallback: (bounds) =>
-                      const LinearGradient(
+                  shaderCallback: (bounds) => const LinearGradient(
                     colors: [appthemecolor, goldLight],
                   ).createShader(bounds),
                   child: Text(
@@ -271,8 +260,7 @@ class _ProfileScreenState
               ),
               boxShadow: [
                 BoxShadow(
-                  color: appthemecolor
-                      .withValues(alpha: 0.4),
+                  color: appthemecolor.withValues(alpha: 0.4),
                   blurRadius: 16,
                   spreadRadius: 2,
                 ),
@@ -291,18 +279,14 @@ class _ProfileScreenState
           Gap(R.px(16)),
           Expanded(
             child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ShaderMask(
-                  shaderCallback: (bounds) =>
-                      const LinearGradient(
+                  shaderCallback: (bounds) => const LinearGradient(
                     colors: [primaryColor, appthemecolor],
                   ).createShader(bounds),
                   child: Text(
-                    userProvider.name.isEmpty
-                        ? 'User'
-                        : userProvider.name,
+                    userProvider.name.isEmpty ? 'User' : userProvider.name,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: R.sp(18),
@@ -351,8 +335,7 @@ class _ProfileScreenState
         final docs = snapshot.data?.docs ?? [];
         final total = docs.length;
         final upcoming = docs.where((doc) {
-          final data =
-              doc.data() as Map<String, dynamic>;
+          final data = doc.data() as Map<String, dynamic>;
           final status = BookingUtils.getStatus(
             data['date'] ?? '',
             data['time'] ?? '',
@@ -596,10 +579,8 @@ class _AccountTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: appthemecolor
-                    .withValues(alpha: 0.1),
-                borderRadius:
-                    BorderRadius.circular(10),
+                color: appthemecolor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 icon,
@@ -610,8 +591,7 @@ class _AccountTile extends StatelessWidget {
             const Gap(12),
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,

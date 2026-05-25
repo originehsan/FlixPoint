@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:gap/gap.dart';
@@ -31,9 +30,8 @@ class CinemaCardWidget extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isSelected
-              ? appthemecolor.withValues(alpha: 0.08)
-              : surfaceColor,
+          color:
+              isSelected ? appthemecolor.withValues(alpha: 0.08) : surfaceColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isSelected
@@ -53,21 +51,25 @@ class CinemaCardWidget extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Cinema logo
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: CachedNetworkImage(
-                imageUrl: cinema['logo'] ?? '',
-                height: 45,
-                width: 60,
-                fit: BoxFit.contain,
-                errorWidget: (context, url, error) => Container(
-                  height: 45,
-                  width: 60,
-                  color: surfaceColor2,
-                  child: const Icon(
-                    Icons.movie,
+            // Cinema initial avatar
+            Container(
+              height: 45,
+              width: 60,
+              decoration: BoxDecoration(
+                color: appthemecolor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: appthemecolor.withValues(alpha: 0.3),
+                  width: 0.5,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  (cinema['name'] ?? 'C')[0].toUpperCase(),
+                  style: TextStyle(
                     color: appthemecolor,
+                    fontSize: R.sp(20),
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -80,9 +82,7 @@ class CinemaCardWidget extends StatelessWidget {
                   Text(
                     cinema['name'] ?? '',
                     style: TextStyle(
-                      color: isSelected
-                          ? appthemecolor
-                          : primaryColor,
+                      color: isSelected ? appthemecolor : primaryColor,
                       fontSize: R.sp(14),
                       fontWeight: FontWeight.w700,
                     ),
@@ -92,9 +92,7 @@ class CinemaCardWidget extends StatelessWidget {
                     children: [
                       Icon(
                         Icons.location_on,
-                        color: isSelected
-                            ? appthemecolor
-                            : secondaryColor,
+                        color: isSelected ? appthemecolor : secondaryColor,
                         size: 12,
                       ),
                       const Gap(3),

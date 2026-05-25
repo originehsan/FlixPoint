@@ -1,4 +1,3 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -12,12 +11,12 @@ import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/widgets/common/app_badge.dart';
 import 'package:movieticket/widgets/common/app_button.dart';
-import 'package:movieticket/widgets/common/appbar/app_appbar.dart';
-import 'package:movieticket/widgets/common/cards/app_card.dart';
-import 'package:movieticket/widgets/common/chips/time_chip.dart';
+import 'package:movieticket/widgets/common/app_appbar.dart';
+import 'package:movieticket/widgets/common/app_card.dart';
+import 'package:movieticket/widgets/common/time_chip.dart';
 import 'package:movieticket/widgets/common/empty_state.dart';
 import 'package:movieticket/widgets/common/shimmer_box.dart';
-import 'package:movieticket/widgets/common/snackbars/app_snackbar.dart';
+import 'package:movieticket/widgets/common/app_snackbar.dart';
 import 'package:provider/provider.dart';
 
 class CinemaSelectionScreen extends StatefulWidget {
@@ -29,16 +28,13 @@ class CinemaSelectionScreen extends StatefulWidget {
   });
 
   @override
-  State<CinemaSelectionScreen> createState() =>
-      _CinemaSelectionScreenState();
+  State<CinemaSelectionScreen> createState() => _CinemaSelectionScreenState();
 }
 
-class _CinemaSelectionScreenState
-    extends State<CinemaSelectionScreen> {
+class _CinemaSelectionScreenState extends State<CinemaSelectionScreen> {
   String _selectedCinemaId = '';
   String _selectedTime = '';
   Map<String, dynamic>? _selectedCinema;
-  // BUG 48 fix: prevent double tap
   bool _isProceedLoading = false;
 
   void _onTimeSelected(
@@ -59,13 +55,12 @@ class _CinemaSelectionScreenState
       cinemaId: cinemaId,
       cinemaName: cinema['name'] ?? '',
       cinemaAddress: cinema['address'] ?? '',
-      cinemaLogo: cinema['logo'] ?? '',
+      cinemaLogo: cinema['name'] ?? '',
     );
   }
 
   Future<void> _proceed() async {
-    if (_selectedCinemaId.isEmpty ||
-        _selectedTime.isEmpty) {
+    if (_selectedCinemaId.isEmpty || _selectedTime.isEmpty) {
       AppSnackbar.warning(
         context,
         'Please select a cinema and showtime',
@@ -73,7 +68,6 @@ class _CinemaSelectionScreenState
       return;
     }
 
-    // BUG 48 fix: prevent double tap
     if (_isProceedLoading) return;
     setState(() => _isProceedLoading = true);
 
@@ -87,12 +81,9 @@ class _CinemaSelectionScreenState
       AppRoutes.slideUpRoute(
         SeatSelection(
           movie: widget.movie,
-          theatreName:
-              _selectedCinema!['name'] ?? '',
-          theatreAddress:
-              _selectedCinema!['address'] ?? '',
-          theatreLogo:
-              _selectedCinema!['logo'] ?? '',
+          theatreName: _selectedCinema!['name'] ?? '',
+          theatreAddress: _selectedCinema!['address'] ?? '',
+          theatreLogo: _selectedCinema!['name'] ?? '',
           cinemaId: _selectedCinemaId,
           preSelectedTime: _selectedTime,
         ),
@@ -123,21 +114,17 @@ class _CinemaSelectionScreenState
                   maxWidth: R.maxWidth,
                 ),
                 child: FutureBuilder<QuerySnapshot>(
-                  future: FirebaseFirestore.instance
-                      .collection(colCinema)
-                      .get(),
+                  future:
+                      FirebaseFirestore.instance.collection(colCinema).get(),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState ==
-                        ConnectionState.waiting) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
                       return _buildShimmer();
                     }
-                    if (!snapshot.hasData ||
-                        snapshot.data!.docs.isEmpty) {
+                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                       return const EmptyState(
                         icon: Icons.theaters_rounded,
                         title: 'No Cinemas Available',
-                        subtitle:
-                            'No cinemas found for this movie',
+                        subtitle: 'No cinemas found for this movie',
                       );
                     }
                     return ListView.builder(
@@ -147,23 +134,18 @@ class _CinemaSelectionScreenState
                         R.horizontalPadding,
                         100,
                       ),
-                      itemCount:
-                          snapshot.data!.docs.length,
+                      itemCount: snapshot.data!.docs.length,
                       itemBuilder: (context, index) {
-                        final doc =
-                            snapshot.data!.docs[index];
-                        final cinema = doc.data()
-                            as Map<String, dynamic>;
+                        final doc = snapshot.data!.docs[index];
+                        final cinema = doc.data() as Map<String, dynamic>;
                         final cinemaId = doc.id;
                         return _CinemaCard(
                           cinema: cinema,
                           cinemaId: cinemaId,
-                          selectedCinemaId:
-                              _selectedCinemaId,
+                          selectedCinemaId: _selectedCinemaId,
                           selectedTime: _selectedTime,
                           index: index,
-                          onTimeSelected: (time) =>
-                              _onTimeSelected(
+                          onTimeSelected: (time) => _onTimeSelected(
                             cinemaId,
                             cinema,
                             time,
@@ -196,16 +178,14 @@ class _CinemaSelectionScreenState
   }
 
   Widget _buildBottomBar() {
-    final isReady = _selectedCinemaId.isNotEmpty &&
-        _selectedTime.isNotEmpty;
+    final isReady = _selectedCinemaId.isNotEmpty && _selectedTime.isNotEmpty;
 
     return Container(
       decoration: BoxDecoration(
         color: surfaceColor,
         border: Border(
           top: BorderSide(
-            color: appthemecolor
-                .withValues(alpha: 0.15),
+            color: appthemecolor.withValues(alpha: 0.15),
           ),
         ),
         boxShadow: [
@@ -228,10 +208,8 @@ class _CinemaSelectionScreenState
         children: [
           if (isReady) ...[
             AppCard(
-              backgroundColor: appthemecolor
-                  .withValues(alpha: 0.06),
-              borderColor: appthemecolor
-                  .withValues(alpha: 0.2),
+              backgroundColor: appthemecolor.withValues(alpha: 0.06),
+              borderColor: appthemecolor.withValues(alpha: 0.2),
               padding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 10,
@@ -254,12 +232,9 @@ class _CinemaSelectionScreenState
                       ),
                     ),
                   ),
-                  // AppBadge replaces custom
-                  // time Container
                   AppBadge(
                     label: _selectedTime,
-                    color: appthemecolor
-                        .withValues(alpha: 0.15),
+                    color: appthemecolor.withValues(alpha: 0.15),
                     textColor: appthemecolor,
                     hasGlow: false,
                   ),
@@ -268,15 +243,11 @@ class _CinemaSelectionScreenState
             ),
             const Gap(12),
           ],
-          // AppButton with isLoading
-          // prevents double tap BUG 48
           AppButton(
             label: isReady
                 ? 'Proceed to Seat Selection'
                 : 'Select Cinema & Showtime',
-            icon: isReady
-                ? Icons.event_seat_rounded
-                : null,
+            icon: isReady ? Icons.event_seat_rounded : null,
             isGradient: isReady,
             isOutlined: !isReady,
             isLoading: _isProceedLoading,
@@ -305,8 +276,7 @@ class _CinemaCard extends StatelessWidget {
     required this.onTimeSelected,
   });
 
-  bool get _isSelected =>
-      selectedCinemaId == cinemaId;
+  bool get _isSelected => selectedCinemaId == cinemaId;
 
   @override
   Widget build(BuildContext context) {
@@ -319,48 +289,41 @@ class _CinemaCard extends StatelessWidget {
       onTap: () {
         if (timings.isNotEmpty) {
           onTimeSelected(
-            _isSelected
-                ? selectedTime
-                : timings.first,
+            _isSelected ? selectedTime : timings.first,
           );
         }
       },
       borderRadius: 20,
       margin: const EdgeInsets.only(bottom: 14),
-      borderColor: _isSelected
-          ? appthemecolor
-          : appthemecolor.withValues(alpha: 0.15),
-      backgroundColor: _isSelected
-          ? appthemecolor.withValues(alpha: 0.06)
-          : surfaceColor,
+      borderColor:
+          _isSelected ? appthemecolor : appthemecolor.withValues(alpha: 0.15),
+      backgroundColor:
+          _isSelected ? appthemecolor.withValues(alpha: 0.06) : surfaceColor,
       hasGlow: _isSelected,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              ClipRRect(
-                borderRadius:
-                    BorderRadius.circular(10),
-                child: CachedNetworkImage(
-                  imageUrl: cinema['logo'] ?? '',
-                  width: 52,
-                  height: 52,
-                  fit: BoxFit.contain,
-                  placeholder: (_, __) =>
-                      const ShimmerBox(
-                    width: 52,
-                    height: 52,
-                    borderRadius: 10,
+              // Cinema initial avatar
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: appthemecolor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: appthemecolor.withValues(alpha: 0.3),
+                    width: 0.5,
                   ),
-                  errorWidget: (_, __, ___) =>
-                      Container(
-                    width: 52,
-                    height: 52,
-                    color: surfaceColor2,
-                    child: const Icon(
-                      Icons.movie,
+                ),
+                child: Center(
+                  child: Text(
+                    (cinema['name'] ?? 'C')[0].toUpperCase(),
+                    style: TextStyle(
                       color: appthemecolor,
+                      fontSize: R.sp(22),
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
@@ -368,15 +331,12 @@ class _CinemaCard extends StatelessWidget {
               const Gap(12),
               Expanded(
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       cinema['name'] ?? '',
                       style: TextStyle(
-                        color: _isSelected
-                            ? appthemecolor
-                            : primaryColor,
+                        color: _isSelected ? appthemecolor : primaryColor,
                         fontSize: R.sp(15),
                         fontWeight: FontWeight.w800,
                       ),
@@ -398,14 +358,12 @@ class _CinemaCard extends StatelessWidget {
                               fontSize: R.sp(11),
                             ),
                             maxLines: 1,
-                            overflow:
-                                TextOverflow.ellipsis,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                    if (cinema['distance'] !=
-                        null) ...[
+                    if (cinema['distance'] != null) ...[
                       const Gap(2),
                       Row(
                         children: [
@@ -420,8 +378,7 @@ class _CinemaCard extends StatelessWidget {
                             style: TextStyle(
                               color: successColor,
                               fontSize: R.sp(10),
-                              fontWeight:
-                                  FontWeight.w600,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
@@ -448,8 +405,7 @@ class _CinemaCard extends StatelessWidget {
           const Gap(14),
           Container(
             height: 1,
-            color:
-                appthemecolor.withValues(alpha: 0.1),
+            color: appthemecolor.withValues(alpha: 0.1),
           ),
           const Gap(14),
           Text(
@@ -468,10 +424,8 @@ class _CinemaCard extends StatelessWidget {
                 .map(
                   (time) => TimeChip(
                     time: time,
-                    isSelected: _isSelected &&
-                        selectedTime == time,
-                    onTap: () =>
-                        onTimeSelected(time),
+                    isSelected: _isSelected && selectedTime == time,
+                    onTap: () => onTimeSelected(time),
                   ),
                 )
                 .toList(),

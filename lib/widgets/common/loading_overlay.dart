@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/responsive.dart';
-import 'package:movieticket/widgets/common/loaders/app_loader.dart';
+import 'package:movieticket/widgets/common/app_loader.dart';
 
 class LoadingOverlay extends StatelessWidget {
   final String? message;

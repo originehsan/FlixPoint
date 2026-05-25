@@ -13,8 +13,8 @@ import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/widgets/common/app_badge.dart';
 import 'package:movieticket/widgets/common/app_button.dart';
-import 'package:movieticket/widgets/common/appbar/app_appbar.dart';
-import 'package:movieticket/widgets/common/cards/app_card.dart';
+import 'package:movieticket/widgets/common/app_appbar.dart';
+import 'package:movieticket/widgets/common/app_card.dart';
 import 'package:movieticket/widgets/common/empty_state.dart';
 import 'package:movieticket/widgets/common/shimmer_box.dart';
 import 'package:movieticket/widgets/ticket/dashed_divider.dart';
@@ -24,12 +24,10 @@ class BookingHistoryScreen extends StatefulWidget {
   const BookingHistoryScreen({super.key});
 
   @override
-  State<BookingHistoryScreen> createState() =>
-      _BookingHistoryScreenState();
+  State<BookingHistoryScreen> createState() => _BookingHistoryScreenState();
 }
 
-class _BookingHistoryScreenState
-    extends State<BookingHistoryScreen>
+class _BookingHistoryScreenState extends State<BookingHistoryScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
@@ -41,8 +39,7 @@ class _BookingHistoryScreenState
   @override
   void initState() {
     super.initState();
-    _tabController =
-        TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadBookings();
   }
 
@@ -54,16 +51,14 @@ class _BookingHistoryScreenState
 
   // One-time fetch — no persistent listener
   Future<void> _loadBookings() async {
-    final uid =
-        FirebaseAuth.instance.currentUser?.uid ?? '';
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
     if (uid.isEmpty) {
       setState(() => _isLoading = false);
       return;
     }
 
     try {
-      final snapshot = await FirebaseFirestore
-          .instance
+      final snapshot = await FirebaseFirestore.instance
           .collection(colBookings)
           .where('userId', isEqualTo: uid)
           .orderBy('createdAt', descending: true)
@@ -73,8 +68,7 @@ class _BookingHistoryScreenState
         setState(() {
           _allBookings = snapshot.docs
               .map(
-                (d) =>
-                    d.data() as Map<String, dynamic>,
+                (d) => d.data(),
               )
               .toList();
           _isLoading = false;
@@ -109,10 +103,8 @@ class _BookingHistoryScreenState
           seats: List<String>.from(
             booking['seats'] ?? [],
           ),
-          theatreName:
-              booking['cinemaName'] ?? '',
-          theatreAddress:
-              booking['cinemaAddress'] ?? '',
+          theatreName: booking['cinemaName'] ?? '',
+          theatreAddress: booking['cinemaAddress'] ?? '',
           theatreIcon: '',
           date: booking['date'] ?? '',
           time: booking['time'] ?? '',
@@ -121,8 +113,7 @@ class _BookingHistoryScreenState
           seatPassengers: Map<String, String>.from(
             booking['seatPassengers'] ?? {},
           ),
-          passengerEmail:
-              booking['passengerEmail'] ?? '',
+          passengerEmail: booking['passengerEmail'] ?? '',
         ),
       ),
     );
@@ -147,30 +138,25 @@ class _BookingHistoryScreenState
             ),
             decoration: BoxDecoration(
               color: surfaceColor,
-              borderRadius:
-                  BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: appthemecolor
-                    .withValues(alpha: 0.15),
+                color: appthemecolor.withValues(alpha: 0.15),
               ),
             ),
             child: TabBar(
               controller: _tabController,
               indicator: BoxDecoration(
                 color: appthemecolor,
-                borderRadius:
-                    BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
-                    color: appthemecolor
-                        .withValues(alpha: 0.4),
+                    color: appthemecolor.withValues(alpha: 0.4),
                     blurRadius: 8,
                     spreadRadius: 1,
                   ),
                 ],
               ),
-              indicatorSize:
-                  TabBarIndicatorSize.tab,
+              indicatorSize: TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
               labelColor: Colors.black,
               unselectedLabelColor: secondaryColor,
@@ -199,11 +185,9 @@ class _BookingHistoryScreenState
                     ? _buildShimmer()
                     : _allBookings.isEmpty
                         ? const EmptyState(
-                            icon: Icons
-                                .confirmation_num_rounded,
+                            icon: Icons.confirmation_num_rounded,
                             title: 'No tickets yet',
-                            subtitle:
-                                'Book your first movie ticket!',
+                            subtitle: 'Book your first movie ticket!',
                           )
                         : _buildTabView(),
               ),
@@ -220,8 +204,7 @@ class _BookingHistoryScreenState
         b['date'] ?? '',
         b['time'] ?? '',
       );
-      return s == BookingStatus.upcoming ||
-          s == BookingStatus.today;
+      return s == BookingStatus.upcoming || s == BookingStatus.today;
     }).toList();
 
     final expired = _allBookings.where((b) {
@@ -244,16 +227,14 @@ class _BookingHistoryScreenState
               ? const EmptyState(
                   icon: Icons.event_busy_rounded,
                   title: 'No upcoming bookings',
-                  subtitle:
-                      'Book a movie to see it here',
+                  subtitle: 'Book a movie to see it here',
                 )
               : _buildList(upcoming),
           expired.isEmpty
               ? const EmptyState(
                   icon: Icons.history_rounded,
                   title: 'No expired tickets',
-                  subtitle:
-                      'Past shows will appear here',
+                  subtitle: 'Past shows will appear here',
                 )
               : _buildList(expired),
         ],
@@ -272,8 +253,7 @@ class _BookingHistoryScreenState
         30,
       ),
       itemCount: bookings.length,
-      itemBuilder: (context, index) =>
-          _BookingCard(
+      itemBuilder: (context, index) => _BookingCard(
         booking: bookings[index],
         index: index,
         onTap: () => _openTicket(bookings[index]),
@@ -338,21 +318,16 @@ class _BookingCard extends StatelessWidget {
       bookingDate,
       bookingTime,
     );
-    final statusColor =
-        BookingUtils.getStatusColor(status);
-    final statusLabel =
-        BookingUtils.getStatusLabel(status);
-    final statusIcon =
-        BookingUtils.getStatusIcon(status);
-    final isExpired =
-        status == BookingStatus.expired;
+    final statusColor = BookingUtils.getStatusColor(status);
+    final statusLabel = BookingUtils.getStatusLabel(status);
+    final statusIcon = BookingUtils.getStatusIcon(status);
+    final isExpired = status == BookingStatus.expired;
     final isToday = status == BookingStatus.today;
     final remaining = BookingUtils.timeRemaining(
       bookingDate,
       bookingTime,
     );
-    final seatPassengers =
-        Map<String, String>.from(
+    final seatPassengers = Map<String, String>.from(
       booking['seatPassengers'] ?? {},
     );
 
@@ -368,10 +343,8 @@ class _BookingCard extends StatelessWidget {
         borderColor: isExpired
             ? appthemecolor.withValues(alpha: 0.08)
             : isToday
-                ? const Color(0xFF00D4FF)
-                    .withValues(alpha: 0.5)
-                : appthemecolor
-                    .withValues(alpha: 0.4),
+                ? const Color(0xFF00D4FF).withValues(alpha: 0.5)
+                : appthemecolor.withValues(alpha: 0.4),
         child: Column(
           children: [
             ClipRRect(
@@ -382,8 +355,7 @@ class _BookingCard extends StatelessWidget {
               child: Stack(
                 children: [
                   CachedNetworkImage(
-                    imageUrl:
-                        booking['moviePoster'] ?? '',
+                    imageUrl: booking['moviePoster'] ?? '',
                     width: double.infinity,
                     height: R.isPhone ? 120 : 150,
                     fit: BoxFit.cover,
@@ -392,8 +364,7 @@ class _BookingCard extends StatelessWidget {
                       height: R.isPhone ? 120 : 150,
                       borderRadius: 0,
                     ),
-                    errorWidget: (_, __, ___) =>
-                        Container(
+                    errorWidget: (_, __, ___) => Container(
                       height: R.isPhone ? 120 : 150,
                       color: surfaceColor2,
                       child: const Icon(
@@ -445,19 +416,15 @@ class _BookingCard extends StatelessWidget {
                 ],
               ),
             ),
-
             const DashedDivider(),
-
             Padding(
               padding: EdgeInsets.all(R.px(14)),
               child: Column(
                 children: [
                   // AppCard replaces cinema Container
                   AppCard(
-                    backgroundColor: appthemecolor
-                        .withValues(alpha: 0.06),
-                    borderColor: appthemecolor
-                        .withValues(alpha: 0.15),
+                    backgroundColor: appthemecolor.withValues(alpha: 0.06),
+                    borderColor: appthemecolor.withValues(alpha: 0.15),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 8,
@@ -476,12 +443,10 @@ class _BookingCard extends StatelessWidget {
                             style: TextStyle(
                               color: primaryColor,
                               fontSize: R.sp(12),
-                              fontWeight:
-                                  FontWeight.w700,
+                              fontWeight: FontWeight.w700,
                             ),
                             maxLines: 1,
-                            overflow:
-                                TextOverflow.ellipsis,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -494,16 +459,14 @@ class _BookingCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: TicketDetailWidget(
-                          icon: Icons
-                              .calendar_today_rounded,
+                          icon: Icons.calendar_today_rounded,
                           label: 'Date',
                           value: bookingDate,
                         ),
                       ),
                       Expanded(
                         child: TicketDetailWidget(
-                          icon:
-                              Icons.access_time_rounded,
+                          icon: Icons.access_time_rounded,
                           label: 'Time',
                           value: bookingTime,
                         ),
@@ -517,8 +480,7 @@ class _BookingCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: TicketDetailWidget(
-                          icon:
-                              Icons.event_seat_rounded,
+                          icon: Icons.event_seat_rounded,
                           label: 'Seats',
                           value: List<String>.from(
                             booking['seats'] ?? [],
@@ -527,11 +489,9 @@ class _BookingCard extends StatelessWidget {
                       ),
                       Expanded(
                         child: TicketDetailWidget(
-                          icon: Icons
-                              .currency_rupee_rounded,
+                          icon: Icons.currency_rupee_rounded,
                           label: 'Amount',
-                          value:
-                              '₹${booking['amount'] ?? 0}',
+                          value: '₹${booking['amount'] ?? 0}',
                         ),
                       ),
                     ],
@@ -541,49 +501,36 @@ class _BookingCard extends StatelessWidget {
                     const Gap(10),
                     AppCard(
                       backgroundColor: surfaceColor2,
-                      padding:
-                          const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(10),
                       child: Column(
-                        children: seatPassengers
-                            .entries
+                        children: seatPassengers.entries
                             .map(
                               (e) => Padding(
-                                padding:
-                                    const EdgeInsets
-                                        .only(bottom: 4),
+                                padding: const EdgeInsets.only(bottom: 4),
                                 child: Row(
                                   children: [
                                     // AppBadge for
                                     // seat number
                                     AppBadge(
                                       label: e.key,
-                                      color: appthemecolor
-                                          .withValues(
-                                              alpha:
-                                                  0.15),
-                                      textColor:
-                                          appthemecolor,
+                                      color:
+                                          appthemecolor.withValues(alpha: 0.15),
+                                      textColor: appthemecolor,
                                       hasGlow: false,
                                     ),
                                     const Gap(8),
                                     const Icon(
-                                      Icons
-                                          .arrow_forward_rounded,
-                                      color:
-                                          secondaryColor,
+                                      Icons.arrow_forward_rounded,
+                                      color: secondaryColor,
                                       size: 10,
                                     ),
                                     const Gap(8),
                                     Text(
                                       e.value,
                                       style: TextStyle(
-                                        color:
-                                            primaryColor,
-                                        fontSize:
-                                            R.sp(11),
-                                        fontWeight:
-                                            FontWeight
-                                                .w600,
+                                        color: primaryColor,
+                                        fontSize: R.sp(11),
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ],
@@ -604,18 +551,14 @@ class _BookingCard extends StatelessWidget {
                       horizontal: 12,
                     ),
                     decoration: BoxDecoration(
-                      color: statusColor
-                          .withValues(alpha: 0.08),
-                      borderRadius:
-                          BorderRadius.circular(10),
+                      color: statusColor.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(
-                        color: statusColor
-                            .withValues(alpha: 0.2),
+                        color: statusColor.withValues(alpha: 0.2),
                       ),
                     ),
                     child: Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
                           statusIcon,
@@ -632,8 +575,7 @@ class _BookingCard extends StatelessWidget {
                           style: TextStyle(
                             color: statusColor,
                             fontSize: R.sp(12),
-                            fontWeight:
-                                FontWeight.w600,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -649,9 +591,7 @@ class _BookingCard extends StatelessWidget {
                     icon: Icons.qr_code_rounded,
                     isGradient: !isExpired,
                     isOutlined: isExpired,
-                    color: isExpired
-                        ? secondaryColor
-                        : null,
+                    color: isExpired ? secondaryColor : null,
                     height: 44,
                     onTap: onTap,
                   ),

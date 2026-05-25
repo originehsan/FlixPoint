@@ -13,16 +13,15 @@ import 'package:movieticket/utils/constants.dart';
 import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/widgets/common/app_button.dart';
-import 'package:movieticket/widgets/common/appbar/app_appbar.dart';
-import 'package:movieticket/widgets/common/cards/app_card.dart';
+import 'package:movieticket/widgets/common/app_appbar.dart';
+import 'package:movieticket/widgets/common/app_card.dart';
 import 'package:movieticket/widgets/common/empty_state.dart';
-import 'package:movieticket/widgets/common/loaders/app_loader.dart';
+import 'package:movieticket/widgets/common/app_loader.dart';
 import 'package:movieticket/widgets/common/section_header.dart';
 import 'package:movieticket/widgets/common/shimmer_box.dart';
-import 'package:movieticket/widgets/common/snackbars/app_snackbar.dart';
-import 'package:movieticket/widgets/common/spacing/gold_divider.dart';
+import 'package:movieticket/widgets/common/app_snackbar.dart';
+import 'package:movieticket/widgets/common/gold_divider.dart';
 import 'package:movieticket/widgets/ticket/ticket_detail_widget.dart';
-// upi_pay replaces upi_india
 import 'package:upi_pay/upi_pay.dart';
 import 'package:uuid/uuid.dart';
 
@@ -57,15 +56,12 @@ class PaymentScreen extends StatefulWidget {
   });
 
   @override
-  State<PaymentScreen> createState() =>
-      _PaymentScreenState();
+  State<PaymentScreen> createState() => _PaymentScreenState();
 }
 
-class _PaymentScreenState
-    extends State<PaymentScreen> {
+class _PaymentScreenState extends State<PaymentScreen> {
   final TmdbService _tmdbService = TmdbService();
-   final _upiPay = UpiPay();  
-  // upi_pay uses List<ApplicationMeta>
+  final _upiPay = UpiPay();
   List<ApplicationMeta>? _apps;
   bool _isProcessing = false;
   late String _orderId;
@@ -73,96 +69,245 @@ class _PaymentScreenState
   @override
   void initState() {
     super.initState();
-    _orderId = const Uuid()
-        .v4()
-        .substring(0, 8)
-        .toUpperCase();
+    _orderId = const Uuid().v4().substring(0, 8).toUpperCase();
     if (!kIsWeb) _loadUpiApps();
   }
 
   void _loadUpiApps() {
-    _upiPay.getInstalledUpiApplications(
-      statusType: UpiApplicationDiscoveryAppStatusType.working,
-    ).then((value) {
+    _upiPay
+        .getInstalledUpiApplications(
+      statusType: UpiApplicationDiscoveryAppStatusType.all,
+    )
+        .then((value) {
+      debugPrint('UPI apps found: ${value.length}');
+      for (final app in value) {
+        debugPrint('UPI app: ${app.upiApplication.getAppName()}');
+      }
       if (mounted) setState(() => _apps = value);
     }).catchError((err) {
+      debugPrint('UPI error: $err');
       if (mounted) setState(() => _apps = []);
     });
   }
 
-  Future<void> _initiatePayment(
-    ApplicationMeta app,
-  ) async {
+  Future<void> _initiatePayment(ApplicationMeta app) async {
     setState(() => _isProcessing = true);
-    try {
-      final response =
-          await _upiPay.initiateTransaction(
-        amount: widget.amount.toString(),
-        app: app.upiApplication,
-        receiverUpiAddress: upiId,
-        receiverName: upiName,
-        transactionRef:
-            'FP_${_orderId}_${DateTime.now().millisecondsSinceEpoch}',
-        transactionNote:
-            'FlixPoint - ${widget.movie.title}',
-      );
-      if (!mounted) return;
-      if (response.status ==
-          UpiTransactionStatus.success) {
-        final isUnique = await _isTransactionUnique(
-          response.txnId ?? '',
-        );
-        if (isUnique) {
-          await _confirmBooking(
-            response.txnId ?? '',
-          );
-        } else {
-          _showError(
-            'Duplicate transaction detected',
-          );
-        }
-      } else if (response.status ==
-          UpiTransactionStatus.failure) {
-        _showError(
-          'Payment failed. Please try again.',
-        );
-      } else {
-        _showError(
-          'Payment status unknown. Contact support.',
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        _showError(
-          'Payment error: ${e.toString()}',
-        );
-      }
-    }
-    if (mounted) {
-      setState(() => _isProcessing = false);
-    }
+
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+
+    setState(() => _isProcessing = false);
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: surfaceColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: appthemecolor.withValues(alpha: 0.3),
+          ),
+        ),
+        contentPadding: const EdgeInsets.all(24),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: appthemecolor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: app.iconImage(40),
+            ),
+            const Gap(16),
+            Text(
+              app.upiApplication.getAppName(),
+              style: TextStyle(
+                color: secondaryColor,
+                fontSize: R.sp(12),
+              ),
+            ),
+            const Gap(8),
+            Text(
+              '₹${widget.amount}',
+              style: TextStyle(
+                color: appthemecolor,
+                fontSize: R.sp(36),
+                fontWeight: FontWeight.w800,
+                height: 1,
+              ),
+            ),
+            const Gap(4),
+            Text(
+              'FlixPoint • ${widget.movie.title}',
+              style: TextStyle(
+                color: secondaryColor,
+                fontSize: R.sp(12),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const Gap(20),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: surfaceColor2,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.account_balance_rounded,
+                    color: appthemecolor,
+                    size: 16,
+                  ),
+                  const Gap(8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Paying to',
+                          style: TextStyle(
+                            color: secondaryColor,
+                            fontSize: R.sp(10),
+                          ),
+                        ),
+                        Text(
+                          'FlixPoint Cinemas',
+                          style: TextStyle(
+                            color: primaryColor,
+                            fontSize: R.sp(13),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: successColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.verified_rounded,
+                          color: successColor,
+                          size: 12,
+                        ),
+                        const Gap(4),
+                        Text(
+                          'Verified',
+                          style: TextStyle(
+                            color: successColor,
+                            fontSize: R.sp(10),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Gap(20),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context, false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: surfaceColor2,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: appthemecolor.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Decline',
+                          style: TextStyle(
+                            color: errorColor,
+                            fontSize: R.sp(14),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const Gap(12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(context, true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [appthemecolor, goldLight],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: appthemecolor.withValues(alpha: 0.4),
+                            blurRadius: 12,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Pay Now',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: R.sp(14),
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted) return;
+    if (confirm != true) return;
+
+    setState(() => _isProcessing = true);
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+
+    await _confirmBooking(
+      'DEMO_${_orderId}_${app.upiApplication.getAppName()}',
+    );
   }
 
   Future<void> _demoBooking() async {
     setState(() => _isProcessing = true);
-    await Future.delayed(
-      const Duration(seconds: 2),
-    );
+    await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
     await _confirmBooking('DEMO_$_orderId');
   }
 
-  Future<bool> _isTransactionUnique(
-    String transactionId,
-  ) async {
+  Future<bool> _isTransactionUnique(String transactionId) async {
     if (transactionId.isEmpty) return true;
     try {
       final query = await FirebaseFirestore.instance
           .collection(colBookings)
-          .where(
-            'transactionId',
-            isEqualTo: transactionId,
-          )
+          .where('transactionId', isEqualTo: transactionId)
           .get();
       return query.docs.isEmpty;
     } catch (_) {
@@ -170,32 +315,22 @@ class _PaymentScreenState
     }
   }
 
-  Future<void> _confirmBooking(
-    String transactionId,
-  ) async {
-    final userId =
-        FirebaseAuth.instance.currentUser?.uid ?? '';
+  Future<void> _confirmBooking(String transactionId) async {
+    final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     if (userId.isEmpty) {
-      _showError(
-        'Session expired. Please login again.',
-      );
-      if (mounted) {
-        setState(() => _isProcessing = false);
-      }
+      _showError('Session expired. Please login again.');
+      if (mounted) setState(() => _isProcessing = false);
       return;
     }
 
     final bookingId = const Uuid().v4();
     try {
-      await FirebaseFirestore.instance
-          .runTransaction((transaction) async {
-        final timingRef =
-            FirebaseFirestore.instance
-                .collection(colTimings)
-                .doc(widget.timingDocId);
-        final timingDoc =
-            await transaction.get(timingRef);
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final timingRef = FirebaseFirestore.instance
+            .collection(colTimings)
+            .doc(widget.timingDocId);
+        final timingDoc = await transaction.get(timingRef);
         final currentBooked = List<String>.from(
           timingDoc.data()?['booked'] ?? [],
         );
@@ -211,28 +346,20 @@ class _PaymentScreenState
         final updates = <String, dynamic>{};
         for (final seat in widget.seats) {
           currentBooked.add(seat);
-          updates['locked.$seat'] =
-              FieldValue.delete();
+          updates['locked.$seat'] = FieldValue.delete();
         }
         updates['booked'] = currentBooked;
-        transaction.set(
-          timingRef,
-          updates,
-          SetOptions(merge: true),
-        );
+        transaction.set(timingRef, updates, SetOptions(merge: true));
 
-        final bookingRef =
-            FirebaseFirestore.instance
-                .collection(colBookings)
-                .doc(bookingId);
+        final bookingRef = FirebaseFirestore.instance
+            .collection(colBookings)
+            .doc(bookingId);
         transaction.set(bookingRef, {
           'bookingId': bookingId,
           'userId': userId,
           'movieId': widget.movie.id,
           'movieName': widget.movie.title,
-          'moviePoster': _tmdbService.getPosterUrl(
-            widget.movie.posterPath,
-          ),
+          'moviePoster': _tmdbService.getPosterUrl(widget.movie.posterPath),
           'cinemaId': widget.cinemaId,
           'cinemaName': widget.theatreName,
           'cinemaAddress': widget.theatreAddress,
@@ -295,26 +422,19 @@ class _PaymentScreenState
         ),
         body: Center(
           child: ConstrainedBox(
-            constraints:
-                BoxConstraints(maxWidth: R.maxWidth),
+            constraints: BoxConstraints(maxWidth: R.maxWidth),
             child: _isProcessing
                 ? _buildProcessing()
                 : SingleChildScrollView(
-                    padding: EdgeInsets.all(
-                      R.horizontalPadding,
-                    ),
+                    padding: EdgeInsets.all(R.horizontalPadding),
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildMovieCard(),
                         const Gap(16),
-                        if (widget
-                            .passengerName.isNotEmpty)
+                        if (widget.passengerName.isNotEmpty)
                           _buildPassengerCard(),
-                        if (widget
-                            .passengerName.isNotEmpty)
-                          const Gap(16),
+                        if (widget.passengerName.isNotEmpty) const Gap(16),
                         _buildOrderDetails(),
                         const Gap(16),
                         _buildTotalSection(),
@@ -341,25 +461,20 @@ class _PaymentScreenState
             width: 90,
             height: 90,
             decoration: BoxDecoration(
-              color: appthemecolor
-                  .withValues(alpha: 0.1),
+              color: appthemecolor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
               border: Border.all(
-                color: appthemecolor
-                    .withValues(alpha: 0.3),
+                color: appthemecolor.withValues(alpha: 0.3),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: appthemecolor
-                      .withValues(alpha: 0.2),
+                  color: appthemecolor.withValues(alpha: 0.2),
                   blurRadius: 20,
                   spreadRadius: 2,
                 ),
               ],
             ),
-            child: Center(
-              child: AppLoader.large(),
-            ),
+            child: Center(child: AppLoader.large()),
           ),
           const Gap(24),
           Text(
@@ -380,14 +495,9 @@ class _PaymentScreenState
           ),
           const Gap(8),
           Row(
-            mainAxisAlignment:
-                MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.lock_rounded,
-                color: successColor,
-                size: 14,
-              ),
+              const Icon(Icons.lock_rounded, color: successColor, size: 14),
               const Gap(6),
               Text(
                 'Your transaction is secure',
@@ -414,9 +524,7 @@ class _PaymentScreenState
               bottomLeft: Radius.circular(16),
             ),
             child: CachedNetworkImage(
-              imageUrl: _tmdbService.getPosterUrl(
-                widget.movie.posterPath,
-              ),
+              imageUrl: _tmdbService.getPosterUrl(widget.movie.posterPath),
               width: R.isPhone ? 90 : 110,
               height: R.isPhone ? 130 : 150,
               fit: BoxFit.cover,
@@ -429,22 +537,16 @@ class _PaymentScreenState
                 width: R.isPhone ? 90 : 110,
                 height: R.isPhone ? 130 : 150,
                 color: surfaceColor2,
-                child: const Icon(
-                  Icons.movie,
-                  color: appthemecolor,
-                ),
+                child: const Icon(Icons.movie, color: appthemecolor),
               ),
             ),
           ),
           const Gap(14),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: 14,
-              ),
+              padding: const EdgeInsets.symmetric(vertical: 14),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     widget.movie.title,
@@ -500,8 +602,7 @@ class _PaymentScreenState
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: appthemecolor
-                      .withValues(alpha: 0.1),
+                  color: appthemecolor.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -537,10 +638,7 @@ class _PaymentScreenState
           ),
         ],
       ),
-    ).animate().fadeIn(
-          delay: 150.ms,
-          duration: 400.ms,
-        );
+    ).animate().fadeIn(delay: 150.ms, duration: 400.ms);
   }
 
   Widget _buildOrderDetails() {
@@ -553,22 +651,14 @@ class _PaymentScreenState
             value: '#$_orderId',
             layout: TicketDetailLayout.row,
           ),
-          const GoldDivider(
-            margin: EdgeInsets.symmetric(
-              vertical: 8,
-            ),
-          ),
+          const GoldDivider(margin: EdgeInsets.symmetric(vertical: 8)),
           TicketDetailWidget(
             icon: Icons.event_seat_rounded,
             label: 'Seats',
             value: widget.seats.join(', '),
             layout: TicketDetailLayout.row,
           ),
-          const GoldDivider(
-            margin: EdgeInsets.symmetric(
-              vertical: 8,
-            ),
-          ),
+          const GoldDivider(margin: EdgeInsets.symmetric(vertical: 8)),
           TicketDetailWidget(
             icon: Icons.confirmation_num_rounded,
             label: 'Tickets',
@@ -578,27 +668,20 @@ class _PaymentScreenState
           ),
         ],
       ),
-    ).animate().fadeIn(
-          delay: 200.ms,
-          duration: 400.ms,
-        );
+    ).animate().fadeIn(delay: 200.ms, duration: 400.ms);
   }
 
   Widget _buildTotalSection() {
     return AppCard(
-      backgroundColor:
-          appthemecolor.withValues(alpha: 0.05),
-      borderColor:
-          appthemecolor.withValues(alpha: 0.4),
+      backgroundColor: appthemecolor.withValues(alpha: 0.05),
+      borderColor: appthemecolor.withValues(alpha: 0.4),
       hasGlow: true,
       padding: const EdgeInsets.all(20),
       child: Row(
-        mainAxisAlignment:
-            MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
@@ -620,16 +703,12 @@ class _PaymentScreenState
               const Gap(4),
               Text(
                 '${widget.seats.length} ticket${widget.seats.length > 1 ? 's' : ''}',
-                style: TextStyle(
-                  color: hintColor,
-                  fontSize: R.sp(11),
-                ),
+                style: TextStyle(color: hintColor, fontSize: R.sp(11)),
               ),
             ],
           ),
           Row(
-            crossAxisAlignment:
-                CrossAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
                 '₹',
@@ -652,10 +731,7 @@ class _PaymentScreenState
           ),
         ],
       ),
-    ).animate().fadeIn(
-          delay: 300.ms,
-          duration: 400.ms,
-        );
+    ).animate().fadeIn(delay: 300.ms, duration: 400.ms);
   }
 
   Widget _buildPaymentMethods() {
@@ -665,32 +741,24 @@ class _PaymentScreenState
         const SectionHeader(title: 'Pay via UPI'),
         AppCard(child: _buildUpiApps()),
       ],
-    ).animate().fadeIn(
-          delay: 400.ms,
-          duration: 400.ms,
-        );
+    ).animate().fadeIn(delay: 400.ms, duration: 400.ms);
   }
 
   Widget _buildWebPayment() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionHeader(
-          title: 'Complete Payment',
-        ),
+        const SectionHeader(title: 'Complete Payment'),
         AppCard(
           child: Column(
             children: [
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: warningColor
-                      .withValues(alpha: 0.08),
-                  borderRadius:
-                      BorderRadius.circular(12),
+                  color: warningColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: warningColor
-                        .withValues(alpha: 0.3),
+                    color: warningColor.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Row(
@@ -726,21 +794,13 @@ class _PaymentScreenState
               ),
               const Gap(10),
               Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.lock_rounded,
-                    color: hintColor,
-                    size: 12,
-                  ),
+                  const Icon(Icons.lock_rounded, color: hintColor, size: 12),
                   const Gap(6),
                   Text(
                     'This is a demo for portfolio purposes',
-                    style: TextStyle(
-                      color: hintColor,
-                      fontSize: R.sp(11),
-                    ),
+                    style: TextStyle(color: hintColor, fontSize: R.sp(11)),
                   ),
                 ],
               ),
@@ -748,10 +808,7 @@ class _PaymentScreenState
           ),
         ),
       ],
-    ).animate().fadeIn(
-          delay: 400.ms,
-          duration: 400.ms,
-        );
+    ).animate().fadeIn(delay: 400.ms, duration: 400.ms);
   }
 
   Widget _buildUpiApps() {
@@ -765,8 +822,7 @@ class _PaymentScreenState
       return const EmptyState(
         icon: Icons.payment_rounded,
         title: 'No UPI apps found',
-        subtitle:
-            'Please install GPay, PhonePe or Paytm',
+        subtitle: 'Please install GPay, PhonePe or Paytm',
       );
     }
     return Wrap(
@@ -784,7 +840,6 @@ class _PaymentScreenState
   }
 }
 
-// ApplicationMeta replaces UpiApp
 class _UpiAppTile extends StatelessWidget {
   final ApplicationMeta app;
   final VoidCallback onTap;
@@ -806,8 +861,7 @@ class _UpiAppTile extends StatelessWidget {
           color: surfaceColor2,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: appthemecolor
-                .withValues(alpha: 0.2),
+            color: appthemecolor.withValues(alpha: 0.2),
           ),
         ),
         child: Column(
@@ -816,10 +870,7 @@ class _UpiAppTile extends StatelessWidget {
             const Gap(6),
             Text(
               app.upiApplication.getAppName(),
-              style: TextStyle(
-                color: primaryColor,
-                fontSize: R.sp(10),
-              ),
+              style: TextStyle(color: primaryColor, fontSize: R.sp(10)),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,

@@ -9,7 +9,7 @@ import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/widgets/common/app_badge.dart';
 import 'package:movieticket/widgets/common/app_button.dart';
-import 'package:movieticket/widgets/common/cards/app_card.dart';
+import 'package:movieticket/widgets/common/app_card.dart';
 import 'package:movieticket/widgets/common/empty_state.dart';
 import 'package:movieticket/widgets/common/section_header.dart';
 import 'package:movieticket/widgets/common/shimmer_box.dart';
@@ -19,8 +19,7 @@ class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
 
   @override
-  State<EventsScreen> createState() =>
-      _EventsScreenState();
+  State<EventsScreen> createState() => _EventsScreenState();
 }
 
 class _EventsScreenState extends State<EventsScreen> {
@@ -28,7 +27,6 @@ class _EventsScreenState extends State<EventsScreen> {
 
   int _selectedCategory = 0;
   int _carouselIndex = 0;
-  List<NewsArticle> _allArticles = [];
   List<NewsArticle> _filteredArticles = [];
   bool _isLoading = true;
   bool _isLoadingMore = false;
@@ -73,7 +71,6 @@ class _EventsScreenState extends State<EventsScreen> {
 
     if (mounted) {
       setState(() {
-        _allArticles = articles;
         _filteredArticles = articles;
         _isLoading = false;
         _hasError = articles.isEmpty;
@@ -85,8 +82,7 @@ class _EventsScreenState extends State<EventsScreen> {
     String category,
   ) async {
     setState(() => _isLoading = true);
-    final filtered =
-        await _newsService.getNewsByCategory(category);
+    final filtered = await _newsService.getNewsByCategory(category);
     if (mounted) {
       setState(() {
         _filteredArticles = filtered;
@@ -126,10 +122,8 @@ class _EventsScreenState extends State<EventsScreen> {
 
   String? _getBadge(NewsArticle article) {
     try {
-      final published =
-          DateTime.parse(article.publishedAt);
-      final diff =
-          DateTime.now().difference(published);
+      final published = DateTime.parse(article.publishedAt);
+      final diff = DateTime.now().difference(published);
       if (diff.inHours < 2) return 'BREAKING';
       if (diff.inHours < 6) return 'NEW';
       return null;
@@ -148,20 +142,17 @@ class _EventsScreenState extends State<EventsScreen> {
       backgroundColor: mobileBackgroundColor,
       body: Center(
         child: ConstrainedBox(
-          constraints:
-              BoxConstraints(maxWidth: R.maxWidth),
+          constraints: BoxConstraints(maxWidth: R.maxWidth),
           child: RefreshIndicator(
             color: appthemecolor,
             backgroundColor: surfaceColor,
-            onRefresh: () =>
-                _loadNews(forceRefresh: true),
+            onRefresh: () => _loadNews(forceRefresh: true),
             child: CustomScrollView(
               slivers: [
                 _buildAppBar(),
                 SliverToBoxAdapter(
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Gap(8),
                       _buildCategoryFilter(),
@@ -172,8 +163,7 @@ class _EventsScreenState extends State<EventsScreen> {
                         EmptyState(
                           icon: Icons.wifi_off_rounded,
                           title: 'Failed to load news',
-                          subtitle:
-                              'Pull down to refresh',
+                          subtitle: 'Pull down to refresh',
                           iconColor: errorColor,
                           actionLabel: 'Retry',
                           onAction: () => _loadNews(
@@ -186,11 +176,9 @@ class _EventsScreenState extends State<EventsScreen> {
                         // EmptyState replaces
                         // _buildEmptyState()
                         const EmptyState(
-                          icon:
-                              Icons.newspaper_rounded,
+                          icon: Icons.newspaper_rounded,
                           title: 'No news found',
-                          subtitle:
-                              'Try a different category',
+                          subtitle: 'Try a different category',
                         )
                       else ...[
                         _buildCarousel(),
@@ -224,8 +212,7 @@ class _EventsScreenState extends State<EventsScreen> {
       snap: true,
       elevation: 0,
       title: ShaderMask(
-        shaderCallback: (bounds) =>
-            const LinearGradient(
+        shaderCallback: (bounds) => const LinearGradient(
           colors: [appthemecolor, goldLight],
         ).createShader(bounds),
         child: Text(
@@ -252,8 +239,7 @@ class _EventsScreenState extends State<EventsScreen> {
         ),
         itemCount: _categories.length,
         itemBuilder: (context, index) {
-          final isSelected =
-              _selectedCategory == index;
+          final isSelected = _selectedCategory == index;
           return GestureDetector(
             onTap: () {
               if (_selectedCategory != index) {
@@ -269,28 +255,22 @@ class _EventsScreenState extends State<EventsScreen> {
               duration: const Duration(
                 milliseconds: 300,
               ),
-              margin:
-                  const EdgeInsets.only(right: 8),
+              margin: const EdgeInsets.only(right: 8),
               padding: const EdgeInsets.symmetric(
                 horizontal: 14,
               ),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? appthemecolor
-                    : surfaceColor,
-                borderRadius:
-                    BorderRadius.circular(24),
+                color: isSelected ? appthemecolor : surfaceColor,
+                borderRadius: BorderRadius.circular(24),
                 border: Border.all(
                   color: isSelected
                       ? appthemecolor
-                      : appthemecolor
-                          .withValues(alpha: 0.2),
+                      : appthemecolor.withValues(alpha: 0.2),
                 ),
                 boxShadow: isSelected
                     ? [
                         BoxShadow(
-                          color: appthemecolor
-                              .withValues(alpha: 0.3),
+                          color: appthemecolor.withValues(alpha: 0.3),
                           blurRadius: 8,
                           spreadRadius: 1,
                         ),
@@ -303,21 +283,16 @@ class _EventsScreenState extends State<EventsScreen> {
                   Icon(
                     _categoryIcons[index],
                     size: R.sp(13),
-                    color: isSelected
-                        ? Colors.black
-                        : secondaryColor,
+                    color: isSelected ? Colors.black : secondaryColor,
                   ),
                   const Gap(5),
                   Text(
                     _categories[index],
                     style: TextStyle(
-                      color: isSelected
-                          ? Colors.black
-                          : secondaryColor,
+                      color: isSelected ? Colors.black : secondaryColor,
                       fontSize: R.sp(11),
-                      fontWeight: isSelected
-                          ? FontWeight.w700
-                          : FontWeight.w400,
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w400,
                     ),
                   ),
                 ],
@@ -336,8 +311,7 @@ class _EventsScreenState extends State<EventsScreen> {
   // Zero text on image
   // ═══════════════════════════════════
   Widget _buildCarousel() {
-    final featured =
-        _filteredArticles.take(5).toList();
+    final featured = _filteredArticles.take(5).toList();
     if (featured.isEmpty) return const SizedBox();
 
     return Column(
@@ -346,10 +320,8 @@ class _EventsScreenState extends State<EventsScreen> {
           options: CarouselOptions(
             height: R.isPhone ? 220 : 280,
             autoPlay: true,
-            autoPlayInterval:
-                const Duration(seconds: 5),
-            autoPlayAnimationDuration:
-                const Duration(milliseconds: 600),
+            autoPlayInterval: const Duration(seconds: 5),
+            autoPlayAnimationDuration: const Duration(milliseconds: 600),
             enlargeCenterPage: true,
             enlargeFactor: 0.1,
             viewportFraction: 0.92,
@@ -361,8 +333,7 @@ class _EventsScreenState extends State<EventsScreen> {
               .map(
                 (article) => _CarouselCard(
                   article: article,
-                  onTap: () =>
-                      _openArticle(article),
+                  onTap: () => _openArticle(article),
                 ),
               )
               .toList(),
@@ -370,8 +341,7 @@ class _EventsScreenState extends State<EventsScreen> {
         const Gap(10),
         // Gold dot indicators
         Row(
-          mainAxisAlignment:
-              MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
             featured.length,
             (index) => AnimatedContainer(
@@ -381,28 +351,22 @@ class _EventsScreenState extends State<EventsScreen> {
               margin: const EdgeInsets.symmetric(
                 horizontal: 3,
               ),
-              width:
-                  _carouselIndex == index ? 20 : 6,
+              width: _carouselIndex == index ? 20 : 6,
               height: 6,
               decoration: BoxDecoration(
                 color: _carouselIndex == index
                     ? appthemecolor
-                    : secondaryColor
-                        .withValues(alpha: 0.3),
-                borderRadius:
-                    BorderRadius.circular(3),
-                boxShadow:
-                    _carouselIndex == index
-                        ? [
-                            BoxShadow(
-                              color: appthemecolor
-                                  .withValues(
-                                      alpha: 0.5),
-                              blurRadius: 6,
-                              spreadRadius: 1,
-                            ),
-                          ]
-                        : null,
+                    : secondaryColor.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(3),
+                boxShadow: _carouselIndex == index
+                    ? [
+                        BoxShadow(
+                          color: appthemecolor.withValues(alpha: 0.5),
+                          blurRadius: 6,
+                          spreadRadius: 1,
+                        ),
+                      ]
+                    : null,
               ),
             ),
           ),
@@ -413,8 +377,7 @@ class _EventsScreenState extends State<EventsScreen> {
 
   // News list skips first 5 (in carousel)
   Widget _buildNewsList() {
-    final articles =
-        _filteredArticles.skip(5).toList();
+    final articles = _filteredArticles.skip(5).toList();
     if (articles.isEmpty) return const SizedBox();
 
     return ListView.builder(
@@ -506,36 +469,31 @@ class _EventsScreenState extends State<EventsScreen> {
                     bottom: 12,
                   ),
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       ShimmerBox(
                         width: 60,
                         height: 12,
                         borderRadius: 4,
-                        margin: const EdgeInsets
-                            .only(bottom: 6),
+                        margin: const EdgeInsets.only(bottom: 6),
                       ),
                       ShimmerBox(
                         width: double.infinity,
                         height: 12,
                         borderRadius: 4,
-                        margin: const EdgeInsets
-                            .only(bottom: 5),
+                        margin: const EdgeInsets.only(bottom: 5),
                       ),
                       ShimmerBox(
                         width: double.infinity,
                         height: 12,
                         borderRadius: 4,
-                        margin: const EdgeInsets
-                            .only(bottom: 5),
+                        margin: const EdgeInsets.only(bottom: 5),
                       ),
                       ShimmerBox(
                         width: 100,
                         height: 12,
                         borderRadius: 4,
-                        margin: const EdgeInsets
-                            .only(bottom: 8),
+                        margin: const EdgeInsets.only(bottom: 8),
                       ),
                       ShimmerBox(
                         width: 70,
@@ -580,14 +538,12 @@ class _CarouselCard extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: appthemecolor
-                .withValues(alpha: 0.4),
+            color: appthemecolor.withValues(alpha: 0.4),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: appthemecolor
-                  .withValues(alpha: 0.2),
+              color: appthemecolor.withValues(alpha: 0.2),
               blurRadius: 20,
               spreadRadius: 2,
             ),
@@ -603,14 +559,12 @@ class _CarouselCard extends StatelessWidget {
                   ? CachedNetworkImage(
                       imageUrl: article.imageUrl!,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) =>
-                          const ShimmerBox(
+                      placeholder: (_, __) => const ShimmerBox(
                         width: double.infinity,
                         height: double.infinity,
                         borderRadius: 24,
                       ),
-                      errorWidget:
-                          (_, __, ___) => Container(
+                      errorWidget: (_, __, ___) => Container(
                         color: surfaceColor,
                         child: const Center(
                           child: Icon(
@@ -643,8 +597,7 @@ class _CarouselCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        Colors.black
-                            .withValues(alpha: 0.5),
+                        Colors.black.withValues(alpha: 0.5),
                         Colors.transparent,
                       ],
                       begin: Alignment.topCenter,
@@ -666,10 +619,8 @@ class _CarouselCard extends StatelessWidget {
                     gradient: LinearGradient(
                       colors: [
                         Colors.transparent,
-                        Colors.black
-                            .withValues(alpha: 0.5),
-                        Colors.black
-                            .withValues(alpha: 0.92),
+                        Colors.black.withValues(alpha: 0.5),
+                        Colors.black.withValues(alpha: 0.92),
                       ],
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
@@ -684,27 +635,23 @@ class _CarouselCard extends StatelessWidget {
                 top: 12,
                 left: 12,
                 child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(
+                  padding: const EdgeInsets.symmetric(
                     horizontal: 10,
                     vertical: 5,
                   ),
                   decoration: BoxDecoration(
                     color: appthemecolor,
-                    borderRadius:
-                        BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(6),
                     boxShadow: [
                       BoxShadow(
-                        color: appthemecolor
-                            .withValues(alpha: 0.5),
+                        color: appthemecolor.withValues(alpha: 0.5),
                         blurRadius: 8,
                         spreadRadius: 1,
                       ),
                     ],
                   ),
                   child: Text(
-                    article.sourceName
-                        .toUpperCase(),
+                    article.sourceName.toUpperCase(),
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: R.sp(8),
@@ -728,8 +675,7 @@ class _CarouselCard extends StatelessWidget {
                     14,
                   ),
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // Headline
@@ -765,16 +711,14 @@ class _CarouselCard extends StatelessWidget {
                             style: TextStyle(
                               color: appthemecolor,
                               fontSize: R.sp(10),
-                              fontWeight:
-                                  FontWeight.w600,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                           const Gap(8),
                           Container(
                             width: 3,
                             height: 3,
-                            decoration:
-                                const BoxDecoration(
+                            decoration: const BoxDecoration(
                               color: Colors.white38,
                               shape: BoxShape.circle,
                             ),
@@ -790,51 +734,40 @@ class _CarouselCard extends StatelessWidget {
                           const Spacer(),
                           // Read Now pill
                           Container(
-                            padding:
-                                const EdgeInsets
-                                    .symmetric(
+                            padding: const EdgeInsets.symmetric(
                               horizontal: 12,
                               vertical: 5,
                             ),
                             decoration: BoxDecoration(
-                              gradient:
-                                  const LinearGradient(
+                              gradient: const LinearGradient(
                                 colors: [
                                   appthemecolor,
                                   goldDark,
                                 ],
                               ),
-                              borderRadius:
-                                  BorderRadius
-                                      .circular(20),
+                              borderRadius: BorderRadius.circular(20),
                               boxShadow: [
                                 BoxShadow(
-                                  color: appthemecolor
-                                      .withValues(
-                                          alpha: 0.4),
+                                  color: appthemecolor.withValues(alpha: 0.4),
                                   blurRadius: 8,
                                   spreadRadius: 1,
                                 ),
                               ],
                             ),
                             child: Row(
-                              mainAxisSize:
-                                  MainAxisSize.min,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
                                   'Read',
                                   style: TextStyle(
-                                    color:
-                                        Colors.black,
+                                    color: Colors.black,
                                     fontSize: R.sp(10),
-                                    fontWeight:
-                                        FontWeight.w800,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 ),
                                 const Gap(4),
                                 const Icon(
-                                  Icons
-                                      .arrow_forward_rounded,
+                                  Icons.arrow_forward_rounded,
                                   color: Colors.black,
                                   size: 10,
                                 ),
@@ -899,34 +832,20 @@ class _NewsCard extends StatelessWidget {
               children: [
                 article.imageUrl != null
                     ? CachedNetworkImage(
-                        imageUrl:
-                            article.imageUrl!,
-                        width:
-                            R.isPhone ? 100 : 120,
-                        height:
-                            R.isPhone ? 110 : 130,
+                        imageUrl: article.imageUrl!,
+                        width: R.isPhone ? 100 : 120,
+                        height: R.isPhone ? 110 : 130,
                         fit: BoxFit.cover,
                         // ShimmerBox replaces
                         // Container placeholder
-                        placeholder: (_, __) =>
-                            ShimmerBox(
-                          width: R.isPhone
-                              ? 100
-                              : 120,
-                          height: R.isPhone
-                              ? 110
-                              : 130,
+                        placeholder: (_, __) => ShimmerBox(
+                          width: R.isPhone ? 100 : 120,
+                          height: R.isPhone ? 110 : 130,
                           borderRadius: 0,
                         ),
-                        errorWidget:
-                            (_, __, ___) =>
-                                Container(
-                          width: R.isPhone
-                              ? 100
-                              : 120,
-                          height: R.isPhone
-                              ? 110
-                              : 130,
+                        errorWidget: (_, __, ___) => Container(
+                          width: R.isPhone ? 100 : 120,
+                          height: R.isPhone ? 110 : 130,
                           color: surfaceColor2,
                           child: const Icon(
                             Icons.newspaper_rounded,
@@ -936,10 +855,8 @@ class _NewsCard extends StatelessWidget {
                         ),
                       )
                     : Container(
-                        width:
-                            R.isPhone ? 100 : 120,
-                        height:
-                            R.isPhone ? 110 : 130,
+                        width: R.isPhone ? 100 : 120,
+                        height: R.isPhone ? 110 : 130,
                         color: surfaceColor2,
                         child: const Icon(
                           Icons.newspaper_rounded,
@@ -969,16 +886,14 @@ class _NewsCard extends StatelessWidget {
                 vertical: 12,
               ),
               child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Source badge
                   // textColor added to AppBadge
                   // so text visible on light bg
                   AppBadge(
                     label: article.sourceName,
-                    color: appthemecolor
-                        .withValues(alpha: 0.12),
+                    color: appthemecolor.withValues(alpha: 0.12),
                     textColor: appthemecolor,
                     hasGlow: false,
                   ),
@@ -1028,8 +943,7 @@ class _NewsCard extends StatelessWidget {
                       ),
                       const Spacer(),
                       const Icon(
-                        Icons
-                            .arrow_forward_ios_rounded,
+                        Icons.arrow_forward_ios_rounded,
                         color: appthemecolor,
                         size: 12,
                       ),

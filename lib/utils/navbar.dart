@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:movieticket/provider/user_provider.dart';
 import 'package:movieticket/screens/booking_history_screen.dart';
-import 'package:movieticket/screens/events.dart';
+import 'package:movieticket/screens/news_screen.dart';
 import 'package:movieticket/screens/homescreen.dart';
 import 'package:movieticket/screens/profile.dart';
 import 'package:movieticket/utils/color.dart';

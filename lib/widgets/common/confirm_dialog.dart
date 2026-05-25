@@ -31,7 +31,6 @@ class ConfirmDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     R.init(context);
-    final isDestructive = confirmColor == errorColor;
 
     return Dialog(
       backgroundColor: Colors.transparent,

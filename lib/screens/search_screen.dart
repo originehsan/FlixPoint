@@ -11,9 +11,9 @@ import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/widgets/common/app_badge.dart';
-import 'package:movieticket/widgets/common/cards/app_card.dart';
+import 'package:movieticket/widgets/common/app_card.dart';
 import 'package:movieticket/widgets/common/empty_state.dart';
-import 'package:movieticket/widgets/common/loaders/app_loader.dart';
+import 'package:movieticket/widgets/common/app_loader.dart';
 import 'package:movieticket/widgets/common/shimmer_box.dart';
 import 'package:movieticket/widgets/movie/watchlist_button.dart';
 
@@ -200,8 +200,7 @@ class _SearchScreenState extends State<SearchScreen> {
     // AppLoader replaces CircularProgressIndicator
     if (_isLoading) {
       return Center(
-        child: AppLoader(
-        ),
+        child: AppLoader(),
       );
     }
 

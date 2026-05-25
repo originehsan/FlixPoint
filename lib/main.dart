@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:movieticket/provider/booking_provider.dart';
+import 'package:movieticket/provider/cinema_provider.dart';
 import 'package:movieticket/provider/movie_provider.dart';
-import 'package:movieticket/provider/moviedetails.dart';
 import 'package:movieticket/provider/user_provider.dart';
 import 'package:movieticket/screens/splashscreen.dart';
 import 'package:movieticket/services/hive_service.dart';
@@ -59,7 +59,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(
-          create: (_) => Movie(),
+          create: (_) => CinemaProvider(),
         ),
         ChangeNotifierProvider(
           create: (_) => UserProvider(),

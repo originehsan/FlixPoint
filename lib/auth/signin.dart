@@ -9,7 +9,7 @@ import 'package:movieticket/utils/navbar.dart';
 import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/widgets/common/app_button.dart';
-import 'package:movieticket/widgets/common/snackbars/app_snackbar.dart';
+import 'package:movieticket/widgets/common/app_snackbar.dart';
 import 'package:movieticket/widgets/flixpoint_logo.dart';
 import 'package:movieticket/widgets/text_field.dart';
 import 'package:provider/provider.dart';
@@ -34,8 +34,7 @@ class _LoginInState extends State<LoginIn> {
   }
 
   Future<void> _loginUser() async {
-    if (_emailController.text.isEmpty ||
-        _passwordController.text.isEmpty) {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       AppSnackbar.warning(
         context,
         'Please fill all fields',
@@ -59,8 +58,7 @@ class _LoginInState extends State<LoginIn> {
       );
 
       // BUG 4 fix: guard empty uid
-      final uid =
-          FirebaseAuth.instance.currentUser?.uid ?? '';
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
       if (uid.isEmpty) {
         setState(() => _isLoading = false);
         AppSnackbar.error(
@@ -98,8 +96,7 @@ class _LoginInState extends State<LoginIn> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints:
-              BoxConstraints(maxWidth: R.maxWidth),
+          constraints: BoxConstraints(maxWidth: R.maxWidth),
           child: SingleChildScrollView(
             padding: EdgeInsets.symmetric(
               horizontal: R.horizontalPadding,
@@ -118,11 +115,9 @@ class _LoginInState extends State<LoginIn> {
                 Gap(R.px(48)),
 
                 TextFieldInput(
-                  textEditingController:
-                      _emailController,
+                  textEditingController: _emailController,
                   hintText: 'Enter your email',
-                  textInputType:
-                      TextInputType.emailAddress,
+                  textInputType: TextInputType.emailAddress,
                   prefixIcon: Icons.email_outlined,
                   autofillHints: const [
                     AutofillHints.email,
@@ -132,13 +127,11 @@ class _LoginInState extends State<LoginIn> {
                 Gap(R.px(16)),
 
                 TextFieldInput(
-                  textEditingController:
-                      _passwordController,
+                  textEditingController: _passwordController,
                   hintText: 'Enter your password',
                   textInputType: TextInputType.text,
                   isPass: true,
-                  prefixIcon:
-                      Icons.lock_outline_rounded,
+                  prefixIcon: Icons.lock_outline_rounded,
                   autofillHints: const [
                     AutofillHints.password,
                   ],
@@ -152,18 +145,15 @@ class _LoginInState extends State<LoginIn> {
                 // GestureDetector+Container
                 TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0.3, end: 1.0),
-                  duration:
-                      const Duration(seconds: 2),
+                  duration: const Duration(seconds: 2),
                   curve: Curves.easeInOut,
                   builder: (context, value, child) {
                     return Container(
                       decoration: BoxDecoration(
-                        borderRadius:
-                            BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(30),
                         boxShadow: [
                           BoxShadow(
-                            color: appthemecolor
-                                .withValues(
+                            color: appthemecolor.withValues(
                               alpha: 0.3 * value,
                             ),
                             blurRadius: 20 * value,
@@ -179,17 +169,14 @@ class _LoginInState extends State<LoginIn> {
                     height: 56,
                     // AppLoader.small replaces CPI
                     isLoading: _isLoading,
-                    onTap: _isLoading
-                        ? null
-                        : _loginUser,
+                    onTap: _isLoading ? null : _loginUser,
                   ),
                 ),
 
                 Gap(R.px(24)),
 
                 Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       "Don't have an account? ",
@@ -199,8 +186,7 @@ class _LoginInState extends State<LoginIn> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () =>
-                          Navigator.pushReplacement(
+                      onTap: () => Navigator.pushReplacement(
                         context,
                         AppRoutes.authRoute(
                           const SignUp(),

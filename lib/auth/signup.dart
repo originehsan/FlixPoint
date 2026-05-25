@@ -9,7 +9,7 @@ import 'package:movieticket/utils/navbar.dart';
 import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/widgets/common/app_button.dart';
-import 'package:movieticket/widgets/common/snackbars/app_snackbar.dart';
+import 'package:movieticket/widgets/common/app_snackbar.dart';
 import 'package:movieticket/widgets/flixpoint_logo.dart';
 import 'package:movieticket/widgets/text_field.dart';
 import 'package:provider/provider.dart';
@@ -26,8 +26,7 @@ class _SignUpState extends State<SignUp> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController =
-      TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   @override
   void dispose() {
@@ -50,8 +49,7 @@ class _SignUpState extends State<SignUp> {
       return;
     }
 
-    if (_passwordController.text !=
-        _confirmPasswordController.text) {
+    if (_passwordController.text != _confirmPasswordController.text) {
       AppSnackbar.error(
         context,
         'Passwords do not match',
@@ -94,8 +92,7 @@ class _SignUpState extends State<SignUp> {
       );
 
       // BUG 4 fix: guard empty uid
-      final uid =
-          FirebaseAuth.instance.currentUser?.uid ?? '';
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
       if (uid.isEmpty) {
         setState(() => _isLoading = false);
         AppSnackbar.error(
@@ -135,8 +132,7 @@ class _SignUpState extends State<SignUp> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints:
-              BoxConstraints(maxWidth: R.maxWidth),
+          constraints: BoxConstraints(maxWidth: R.maxWidth),
           child: SingleChildScrollView(
             padding: EdgeInsets.symmetric(
               horizontal: R.horizontalPadding,
@@ -159,12 +155,10 @@ class _SignUpState extends State<SignUp> {
                 ),
                 Gap(R.px(6)),
                 TextFieldInput(
-                  textEditingController:
-                      _nameController,
+                  textEditingController: _nameController,
                   hintText: 'Enter your name',
                   textInputType: TextInputType.name,
-                  prefixIcon:
-                      Icons.person_outline_rounded,
+                  prefixIcon: Icons.person_outline_rounded,
                   autofillHints: const [
                     AutofillHints.name,
                   ],
@@ -175,11 +169,9 @@ class _SignUpState extends State<SignUp> {
                 _fieldLabel('Email'),
                 Gap(R.px(6)),
                 TextFieldInput(
-                  textEditingController:
-                      _emailController,
+                  textEditingController: _emailController,
                   hintText: 'Enter your email',
-                  textInputType:
-                      TextInputType.emailAddress,
+                  textInputType: TextInputType.emailAddress,
                   prefixIcon: Icons.email_outlined,
                   autofillHints: const [
                     AutofillHints.email,
@@ -191,13 +183,11 @@ class _SignUpState extends State<SignUp> {
                 _fieldLabel('Password'),
                 Gap(R.px(6)),
                 TextFieldInput(
-                  textEditingController:
-                      _passwordController,
+                  textEditingController: _passwordController,
                   hintText: 'Create a password',
                   textInputType: TextInputType.text,
                   isPass: true,
-                  prefixIcon:
-                      Icons.lock_outline_rounded,
+                  prefixIcon: Icons.lock_outline_rounded,
                   autofillHints: const [
                     AutofillHints.newPassword,
                   ],
@@ -208,13 +198,11 @@ class _SignUpState extends State<SignUp> {
                 _fieldLabel('Confirm Password'),
                 Gap(R.px(6)),
                 TextFieldInput(
-                  textEditingController:
-                      _confirmPasswordController,
+                  textEditingController: _confirmPasswordController,
                   hintText: 'Confirm your password',
                   textInputType: TextInputType.text,
                   isPass: true,
-                  prefixIcon:
-                      Icons.lock_outline_rounded,
+                  prefixIcon: Icons.lock_outline_rounded,
                   autofillHints: const [
                     AutofillHints.newPassword,
                   ],
@@ -226,18 +214,15 @@ class _SignUpState extends State<SignUp> {
                 // AppButton inside for consistency
                 TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0.3, end: 1.0),
-                  duration:
-                      const Duration(seconds: 2),
+                  duration: const Duration(seconds: 2),
                   curve: Curves.easeInOut,
                   builder: (context, value, child) {
                     return Container(
                       decoration: BoxDecoration(
-                        borderRadius:
-                            BorderRadius.circular(30),
+                        borderRadius: BorderRadius.circular(30),
                         boxShadow: [
                           BoxShadow(
-                            color: appthemecolor
-                                .withValues(
+                            color: appthemecolor.withValues(
                               alpha: 0.3 * value,
                             ),
                             blurRadius: 20 * value,
@@ -253,17 +238,14 @@ class _SignUpState extends State<SignUp> {
                     height: 56,
                     // AppLoader.small replaces CPI
                     isLoading: _isLoading,
-                    onTap: _isLoading
-                        ? null
-                        : _signUp,
+                    onTap: _isLoading ? null : _signUp,
                   ),
                 ),
 
                 Gap(R.px(24)),
 
                 Row(
-                  mainAxisAlignment:
-                      MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
                       'Already have an account? ',
@@ -273,8 +255,7 @@ class _SignUpState extends State<SignUp> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () =>
-                          Navigator.pushReplacement(
+                      onTap: () => Navigator.pushReplacement(
                         context,
                         AppRoutes.authRoute(
                           const LoginIn(),

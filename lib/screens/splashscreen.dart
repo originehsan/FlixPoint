@@ -8,7 +8,7 @@ import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/navbar.dart';
 import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
-import 'package:movieticket/widgets/common/loaders/app_loader.dart';
+import 'package:movieticket/widgets/common/app_loader.dart';
 import 'package:provider/provider.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -23,10 +23,8 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _scanController;
   late Animation<double> _scanAnimation;
   late AnimationController _letterController;
-  late Animation<double> _letterAnimation;
   late AnimationController _grainController;
   late AnimationController _fadeController;
-  late Animation<double> _fadeAnimation;
 
   String _name = 'User';
   String _typewriterText = '';
@@ -61,10 +59,6 @@ class _SplashScreenState extends State<SplashScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    _letterAnimation = CurvedAnimation(
-      parent: _letterController,
-      curve: Curves.easeOut,
-    );
 
     _grainController = AnimationController(
       vsync: this,
@@ -74,10 +68,6 @@ class _SplashScreenState extends State<SplashScreen>
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
-    );
-    _fadeAnimation = CurvedAnimation(
-      parent: _fadeController,
-      curve: Curves.easeIn,
     );
   }
 
