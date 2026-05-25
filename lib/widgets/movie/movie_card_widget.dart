@@ -6,6 +6,8 @@ import 'package:movieticket/models/tmdb_movie.dart';
 import 'package:movieticket/services/tmdb_service.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/responsive.dart';
+import 'package:movieticket/widgets/common/app_badge.dart';
+import 'package:movieticket/widgets/common/shimmer_box.dart';
 import 'package:movieticket/widgets/movie/watchlist_button.dart';
 
 class MovieCardWidget extends StatelessWidget {
@@ -14,6 +16,7 @@ class MovieCardWidget extends StatelessWidget {
   final VoidCallback onTap;
   final String? badgeText;
   final Color? badgeColor;
+  final String? heroSection;
 
   const MovieCardWidget({
     super.key,
@@ -22,6 +25,7 @@ class MovieCardWidget extends StatelessWidget {
     required this.onTap,
     this.badgeText,
     this.badgeColor,
+    this.heroSection,
   });
 
   @override
@@ -34,92 +38,78 @@ class MovieCardWidget extends StatelessWidget {
       child: SizedBox(
         width: R.movieCardWidth,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Poster
-            ClipRRect(
-              borderRadius: BorderRadius.circular(R.cardRadius),
-              child: Stack(
-                children: [
-                  CachedNetworkImage(
-                    imageUrl: tmdbService.getPosterUrl(movie.posterPath),
-                    height: R.movieCardHeight,
-                    width: R.movieCardWidth,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
+            // BUG 29 fix: Hero tag includes
+            // section to avoid conflicts
+            Hero(
+              tag: heroSection != null
+                  ? 'movie_${movie.id}_$heroSection'
+                  : 'movie_${movie.id}_card_$index',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(
+                  R.cardRadius,
+                ),
+                child: Stack(
+                  children: [
+                    CachedNetworkImage(
+                      imageUrl:
+                          tmdbService.getPosterUrl(
+                        movie.posterPath,
+                      ),
                       height: R.movieCardHeight,
                       width: R.movieCardWidth,
-                      color: surfaceColor,
-                      child: const Center(
-                        child: CircularProgressIndicator(
+                      fit: BoxFit.cover,
+                      // ShimmerBox replaces CPI
+                      placeholder: (_, __) =>
+                          ShimmerBox(
+                        height: R.movieCardHeight,
+                        width: R.movieCardWidth,
+                        borderRadius: R.cardRadius,
+                      ),
+                      errorWidget: (_, __, ___) =>
+                          Container(
+                        height: R.movieCardHeight,
+                        width: R.movieCardWidth,
+                        color: surfaceColor,
+                        child: const Icon(
+                          Icons.movie,
                           color: appthemecolor,
-                          strokeWidth: 2,
+                          size: 30,
                         ),
                       ),
                     ),
-                    errorWidget: (context, url, error) => Container(
-                      height: R.movieCardHeight,
-                      width: R.movieCardWidth,
-                      color: surfaceColor,
-                      child: const Icon(
-                        Icons.movie,
-                        color: appthemecolor,
-                        size: 30,
-                      ),
-                    ),
-                  ),
 
-                  // Badge (top left)
-                  if (badgeText != null)
+                    // AppBadge replaces custom Container
+                    if (badgeText != null)
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: AppBadge(
+                          label: badgeText!,
+                          color: badgeColor ??
+                              appthemecolor,
+                          hasGlow: true,
+                        ),
+                      ),
+
                     Positioned(
-                      top: 8,
-                      left: 8,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: badgeColor ?? appthemecolor,
-                          borderRadius: BorderRadius.circular(4),
-                          boxShadow: [
-                            BoxShadow(
-                              color: (badgeColor ?? appthemecolor)
-                                  .withValues(alpha: 0.5),
-                              blurRadius: 8,
-                              spreadRadius: 1,
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          badgeText!,
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontSize: R.sp(8),
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+                      top: 6,
+                      right: 6,
+                      child: WatchlistButton(
+                        movie: movie,
+                        size: 14,
                       ),
                     ),
-
-                  // Watchlist button (top right)
-                  Positioned(
-                    top: 6,
-                    right: 6,
-                    child: WatchlistButton(
-                      movie: movie,
-                      size: 14,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
 
             const Gap(6),
 
-            // Title
             Text(
               movie.title,
               style: TextStyle(
@@ -133,7 +123,6 @@ class MovieCardWidget extends StatelessWidget {
 
             const Gap(2),
 
-            // Rating and year
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -165,7 +154,9 @@ class MovieCardWidget extends StatelessWidget {
         ),
       ),
     ).animate().fadeIn(
-          delay: Duration(milliseconds: index * 50),
+          delay: Duration(
+            milliseconds: index * 50,
+          ),
         );
   }
 }

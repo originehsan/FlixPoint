@@ -11,6 +11,7 @@ import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/constants.dart';
 import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
+import 'package:movieticket/widgets/common/app_badge.dart';
 import 'package:movieticket/widgets/common/app_button.dart';
 import 'package:movieticket/widgets/common/appbar/app_appbar.dart';
 import 'package:movieticket/widgets/common/cards/app_card.dart';
@@ -32,11 +33,17 @@ class _BookingHistoryScreenState
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
+  // BUG 12 fix: use local state + get()
+  // instead of real-time snapshots()
+  List<Map<String, dynamic>> _allBookings = [];
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
     _tabController =
         TabController(length: 3, vsync: this);
+    _loadBookings();
   }
 
   @override
@@ -45,8 +52,42 @@ class _BookingHistoryScreenState
     super.dispose();
   }
 
+  // One-time fetch — no persistent listener
+  Future<void> _loadBookings() async {
+    final uid =
+        FirebaseAuth.instance.currentUser?.uid ?? '';
+    if (uid.isEmpty) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    try {
+      final snapshot = await FirebaseFirestore
+          .instance
+          .collection(colBookings)
+          .where('userId', isEqualTo: uid)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      if (mounted) {
+        setState(() {
+          _allBookings = snapshot.docs
+              .map(
+                (d) =>
+                    d.data() as Map<String, dynamic>,
+              )
+              .toList();
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   void _openTicket(
-    BuildContext context,
     Map<String, dynamic> booking,
   ) {
     final movie = TmdbMovie(
@@ -68,7 +109,8 @@ class _BookingHistoryScreenState
           seats: List<String>.from(
             booking['seats'] ?? [],
           ),
-          theatreName: booking['cinemaName'] ?? '',
+          theatreName:
+              booking['cinemaName'] ?? '',
           theatreAddress:
               booking['cinemaAddress'] ?? '',
           theatreIcon: '',
@@ -89,19 +131,15 @@ class _BookingHistoryScreenState
   @override
   Widget build(BuildContext context) {
     R.init(context);
-    final uid =
-        FirebaseAuth.instance.currentUser?.uid ?? '';
 
     return Scaffold(
       backgroundColor: mobileBackgroundColor,
-      // AppAppBar replaces custom ShaderMask AppBar
       appBar: AppAppBar(
         title: 'My Tickets',
         showBackButton: false,
       ),
       body: Column(
         children: [
-          // Tab bar
           Container(
             margin: EdgeInsets.symmetric(
               horizontal: R.horizontalPadding,
@@ -109,7 +147,8 @@ class _BookingHistoryScreenState
             ),
             decoration: BoxDecoration(
               color: surfaceColor,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius:
+                  BorderRadius.circular(12),
               border: Border.all(
                 color: appthemecolor
                     .withValues(alpha: 0.15),
@@ -119,7 +158,8 @@ class _BookingHistoryScreenState
               controller: _tabController,
               indicator: BoxDecoration(
                 color: appthemecolor,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius:
+                    BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
                     color: appthemecolor
@@ -129,7 +169,8 @@ class _BookingHistoryScreenState
                   ),
                 ],
               ),
-              indicatorSize: TabBarIndicatorSize.tab,
+              indicatorSize:
+                  TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
               labelColor: Colors.black,
               unselectedLabelColor: secondaryColor,
@@ -154,89 +195,67 @@ class _BookingHistoryScreenState
                 constraints: BoxConstraints(
                   maxWidth: R.maxWidth,
                 ),
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection(colBookings)
-                      .where('userId', isEqualTo: uid)
-                      .orderBy(
-                        'createdAt',
-                        descending: true,
-                      )
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    // ShimmerBox replaces CircularProgressIndicator
-                    if (snapshot.connectionState ==
-                        ConnectionState.waiting) {
-                      return _buildShimmer();
-                    }
-
-                    if (!snapshot.hasData ||
-                        snapshot.data!.docs.isEmpty) {
-                      // EmptyState replaces _buildEmptyState()
-                      return const EmptyState(
-                        icon: Icons
-                            .confirmation_num_rounded,
-                        title: 'No tickets yet',
-                        subtitle:
-                            'Book your first movie ticket!',
-                      );
-                    }
-
-                    final all = snapshot.data!.docs
-                        .map((d) => d.data()
-                            as Map<String, dynamic>)
-                        .toList();
-
-                    final upcoming = all.where((b) {
-                      final s = BookingUtils.getStatus(
-                        b['date'] ?? '',
-                        b['time'] ?? '',
-                      );
-                      return s ==
-                              BookingStatus.upcoming ||
-                          s == BookingStatus.today;
-                    }).toList();
-
-                    final expired = all.where((b) {
-                      final s = BookingUtils.getStatus(
-                        b['date'] ?? '',
-                        b['time'] ?? '',
-                      );
-                      return s ==
-                          BookingStatus.expired;
-                    }).toList();
-
-                    return TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildList(all),
-                        upcoming.isEmpty
-                            ? const EmptyState(
-                                icon: Icons
-                                    .event_busy_rounded,
-                                title:
-                                    'No upcoming bookings',
-                                subtitle:
-                                    'Book a movie to see it here',
-                              )
-                            : _buildList(upcoming),
-                        expired.isEmpty
-                            ? const EmptyState(
-                                icon: Icons
-                                    .history_rounded,
-                                title:
-                                    'No expired tickets',
-                                subtitle:
-                                    'Past shows will appear here',
-                              )
-                            : _buildList(expired),
-                      ],
-                    );
-                  },
-                ),
+                child: _isLoading
+                    ? _buildShimmer()
+                    : _allBookings.isEmpty
+                        ? const EmptyState(
+                            icon: Icons
+                                .confirmation_num_rounded,
+                            title: 'No tickets yet',
+                            subtitle:
+                                'Book your first movie ticket!',
+                          )
+                        : _buildTabView(),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabView() {
+    final upcoming = _allBookings.where((b) {
+      final s = BookingUtils.getStatus(
+        b['date'] ?? '',
+        b['time'] ?? '',
+      );
+      return s == BookingStatus.upcoming ||
+          s == BookingStatus.today;
+    }).toList();
+
+    final expired = _allBookings.where((b) {
+      final s = BookingUtils.getStatus(
+        b['date'] ?? '',
+        b['time'] ?? '',
+      );
+      return s == BookingStatus.expired;
+    }).toList();
+
+    return RefreshIndicator(
+      color: appthemecolor,
+      backgroundColor: surfaceColor,
+      onRefresh: _loadBookings,
+      child: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildList(_allBookings),
+          upcoming.isEmpty
+              ? const EmptyState(
+                  icon: Icons.event_busy_rounded,
+                  title: 'No upcoming bookings',
+                  subtitle:
+                      'Book a movie to see it here',
+                )
+              : _buildList(upcoming),
+          expired.isEmpty
+              ? const EmptyState(
+                  icon: Icons.history_rounded,
+                  title: 'No expired tickets',
+                  subtitle:
+                      'Past shows will appear here',
+                )
+              : _buildList(expired),
         ],
       ),
     );
@@ -257,13 +276,11 @@ class _BookingHistoryScreenState
           _BookingCard(
         booking: bookings[index],
         index: index,
-        onTap: () =>
-            _openTicket(context, bookings[index]),
+        onTap: () => _openTicket(bookings[index]),
       ),
     );
   }
 
-  // Shimmer skeleton matching ticket card shape
   Widget _buildShimmer() {
     return ListView.builder(
       padding: EdgeInsets.fromLTRB(
@@ -300,8 +317,6 @@ class _BookingHistoryScreenState
   }
 }
 
-// Extracted as separate widget to keep
-// build method clean and allow reuse
 class _BookingCard extends StatelessWidget {
   final Map<String, dynamic> booking;
   final int index;
@@ -331,8 +346,7 @@ class _BookingCard extends StatelessWidget {
         BookingUtils.getStatusIcon(status);
     final isExpired =
         status == BookingStatus.expired;
-    final isToday =
-        status == BookingStatus.today;
+    final isToday = status == BookingStatus.today;
     final remaining = BookingUtils.timeRemaining(
       bookingDate,
       bookingTime,
@@ -344,7 +358,6 @@ class _BookingCard extends StatelessWidget {
 
     return Opacity(
       opacity: isExpired ? 0.6 : 1.0,
-      // AppCard replaces GestureDetector + Container
       child: AppCard(
         onTap: onTap,
         borderRadius: 20,
@@ -361,7 +374,6 @@ class _BookingCard extends StatelessWidget {
                     .withValues(alpha: 0.4),
         child: Column(
           children: [
-            // Movie banner
             ClipRRect(
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(20),
@@ -375,7 +387,6 @@ class _BookingCard extends StatelessWidget {
                     width: double.infinity,
                     height: R.isPhone ? 120 : 150,
                     fit: BoxFit.cover,
-                    // ShimmerBox replaces plain Container placeholder
                     placeholder: (_, __) => ShimmerBox(
                       width: double.infinity,
                       height: R.isPhone ? 120 : 150,
@@ -398,62 +409,18 @@ class _BookingCard extends StatelessWidget {
                       gradient: heroGradient,
                     ),
                   ),
-
-                  // Status badge
+                  // AppBadge replaces status
+                  // badge Container
                   Positioned(
                     top: 12,
                     right: 12,
-                    child: Container(
-                      padding:
-                          const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor
-                            .withValues(alpha: 0.15),
-                        borderRadius:
-                            BorderRadius.circular(20),
-                        border: Border.all(
-                          color: statusColor
-                              .withValues(alpha: 0.4),
-                        ),
-                        boxShadow: isExpired
-                            ? null
-                            : [
-                                BoxShadow(
-                                  color: statusColor
-                                      .withValues(
-                                          alpha: 0.3),
-                                  blurRadius: 8,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            statusIcon,
-                            color: statusColor,
-                            size: 11,
-                          ),
-                          const Gap(4),
-                          Text(
-                            statusLabel,
-                            style: TextStyle(
-                              color: statusColor,
-                              fontSize: R.sp(10),
-                              fontWeight:
-                                  FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
+                    child: AppBadge(
+                      label: statusLabel,
+                      icon: statusIcon,
+                      color: statusColor,
+                      hasGlow: !isExpired,
                     ),
                   ),
-
-                  // Movie title
                   Positioned(
                     bottom: 12,
                     left: 14,
@@ -485,21 +452,15 @@ class _BookingCard extends StatelessWidget {
               padding: EdgeInsets.all(R.px(14)),
               child: Column(
                 children: [
-                  // Cinema name row
-                  Container(
+                  // AppCard replaces cinema Container
+                  AppCard(
+                    backgroundColor: appthemecolor
+                        .withValues(alpha: 0.06),
+                    borderColor: appthemecolor
+                        .withValues(alpha: 0.15),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: appthemecolor
-                          .withValues(alpha: 0.06),
-                      borderRadius:
-                          BorderRadius.circular(10),
-                      border: Border.all(
-                        color: appthemecolor
-                            .withValues(alpha: 0.15),
-                      ),
                     ),
                     child: Row(
                       children: [
@@ -529,8 +490,6 @@ class _BookingCard extends StatelessWidget {
 
                   const Gap(12),
 
-                  // Date and time row
-                  // TicketDetailWidget replaces _detail()
                   Row(
                     children: [
                       Expanded(
@@ -543,7 +502,8 @@ class _BookingCard extends StatelessWidget {
                       ),
                       Expanded(
                         child: TicketDetailWidget(
-                          icon: Icons.access_time_rounded,
+                          icon:
+                              Icons.access_time_rounded,
                           label: 'Time',
                           value: bookingTime,
                         ),
@@ -553,7 +513,6 @@ class _BookingCard extends StatelessWidget {
 
                   const Gap(10),
 
-                  // Seats and amount row
                   Row(
                     children: [
                       Expanded(
@@ -578,56 +537,33 @@ class _BookingCard extends StatelessWidget {
                     ],
                   ),
 
-                  // Passengers section
                   if (seatPassengers.isNotEmpty) ...[
                     const Gap(10),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: surfaceColor2,
-                        borderRadius:
-                            BorderRadius.circular(10),
-                      ),
+                    AppCard(
+                      backgroundColor: surfaceColor2,
+                      padding:
+                          const EdgeInsets.all(10),
                       child: Column(
-                        children: seatPassengers.entries
+                        children: seatPassengers
+                            .entries
                             .map(
                               (e) => Padding(
                                 padding:
-                                    const EdgeInsets.only(
-                                  bottom: 4,
-                                ),
+                                    const EdgeInsets
+                                        .only(bottom: 4),
                                 child: Row(
                                   children: [
-                                    Container(
-                                      padding:
-                                          const EdgeInsets
-                                              .symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration:
-                                          BoxDecoration(
-                                        color: appthemecolor
-                                            .withValues(
-                                          alpha: 0.15,
-                                        ),
-                                        borderRadius:
-                                            BorderRadius
-                                                .circular(
-                                                    4),
-                                      ),
-                                      child: Text(
-                                        e.key,
-                                        style: TextStyle(
-                                          color:
-                                              appthemecolor,
-                                          fontSize:
-                                              R.sp(9),
-                                          fontWeight:
-                                              FontWeight
-                                                  .w700,
-                                        ),
-                                      ),
+                                    // AppBadge for
+                                    // seat number
+                                    AppBadge(
+                                      label: e.key,
+                                      color: appthemecolor
+                                          .withValues(
+                                              alpha:
+                                                  0.15),
+                                      textColor:
+                                          appthemecolor,
+                                      hasGlow: false,
                                     ),
                                     const Gap(8),
                                     const Icon(
@@ -661,7 +597,6 @@ class _BookingCard extends StatelessWidget {
 
                   const Gap(12),
 
-                  // Time remaining banner
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
@@ -697,7 +632,8 @@ class _BookingCard extends StatelessWidget {
                           style: TextStyle(
                             color: statusColor,
                             fontSize: R.sp(12),
-                            fontWeight: FontWeight.w600,
+                            fontWeight:
+                                FontWeight.w600,
                           ),
                         ),
                       ],
@@ -706,7 +642,6 @@ class _BookingCard extends StatelessWidget {
 
                   const Gap(12),
 
-                  // AppButton replaces custom Container button
                   AppButton(
                     label: isExpired
                         ? 'View Expired Ticket'

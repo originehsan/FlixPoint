@@ -22,7 +22,8 @@ import 'package:movieticket/widgets/common/shimmer_box.dart';
 import 'package:movieticket/widgets/common/snackbars/app_snackbar.dart';
 import 'package:movieticket/widgets/common/spacing/gold_divider.dart';
 import 'package:movieticket/widgets/ticket/ticket_detail_widget.dart';
-import 'package:upi_india/upi_india.dart';
+// upi_pay replaces upi_india
+import 'package:upi_pay/upi_pay.dart';
 import 'package:uuid/uuid.dart';
 
 class PaymentScreen extends StatefulWidget {
@@ -60,10 +61,12 @@ class PaymentScreen extends StatefulWidget {
       _PaymentScreenState();
 }
 
-class _PaymentScreenState extends State<PaymentScreen> {
-  final UpiIndia _upiIndia = UpiIndia();
+class _PaymentScreenState
+    extends State<PaymentScreen> {
   final TmdbService _tmdbService = TmdbService();
-  List<UpiApp>? _apps;
+   final _upiPay = UpiPay();  
+  // upi_pay uses List<ApplicationMeta>
+  List<ApplicationMeta>? _apps;
   bool _isProcessing = false;
   late String _orderId;
 
@@ -78,43 +81,51 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _loadUpiApps() {
-    _upiIndia
-        .getAllUpiApps(mandatoryTransactionId: false)
-        .then((value) {
+    _upiPay.getInstalledUpiApplications(
+      statusType: UpiApplicationDiscoveryAppStatusType.working,
+    ).then((value) {
       if (mounted) setState(() => _apps = value);
     }).catchError((err) {
       if (mounted) setState(() => _apps = []);
     });
   }
 
-  Future<void> _initiatePayment(UpiApp app) async {
+  Future<void> _initiatePayment(
+    ApplicationMeta app,
+  ) async {
     setState(() => _isProcessing = true);
     try {
-      final response = await _upiIndia.startTransaction(
-        app: app,
-        receiverUpiId: upiId,
+      final response =
+          await _upiPay.initiateTransaction(
+        amount: widget.amount.toString(),
+        app: app.upiApplication,
+        receiverUpiAddress: upiId,
         receiverName: upiName,
-        transactionRefId:
+        transactionRef:
             'FP_${_orderId}_${DateTime.now().millisecondsSinceEpoch}',
         transactionNote:
             'FlixPoint - ${widget.movie.title}',
-        amount: widget.amount.toDouble(),
       );
       if (!mounted) return;
-      if (response.status == UpiPaymentStatus.SUCCESS) {
+      if (response.status ==
+          UpiTransactionStatus.success) {
         final isUnique = await _isTransactionUnique(
-          response.transactionId ?? '',
+          response.txnId ?? '',
         );
         if (isUnique) {
           await _confirmBooking(
-            response.transactionId ?? '',
+            response.txnId ?? '',
           );
         } else {
-          _showError('Duplicate transaction detected');
+          _showError(
+            'Duplicate transaction detected',
+          );
         }
       } else if (response.status ==
-          UpiPaymentStatus.FAILURE) {
-        _showError('Payment failed. Please try again.');
+          UpiTransactionStatus.failure) {
+        _showError(
+          'Payment failed. Please try again.',
+        );
       } else {
         _showError(
           'Payment status unknown. Contact support.',
@@ -122,15 +133,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
     } catch (e) {
       if (mounted) {
-        _showError('Payment error: ${e.toString()}');
+        _showError(
+          'Payment error: ${e.toString()}',
+        );
       }
     }
-    if (mounted) setState(() => _isProcessing = false);
+    if (mounted) {
+      setState(() => _isProcessing = false);
+    }
   }
 
   Future<void> _demoBooking() async {
     setState(() => _isProcessing = true);
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(
+      const Duration(seconds: 2),
+    );
     if (!mounted) return;
     await _confirmBooking('DEMO_$_orderId');
   }
@@ -148,7 +165,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           )
           .get();
       return query.docs.isEmpty;
-    } catch (e) {
+    } catch (_) {
       return true;
     }
   }
@@ -158,25 +175,39 @@ class _PaymentScreenState extends State<PaymentScreen> {
   ) async {
     final userId =
         FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    if (userId.isEmpty) {
+      _showError(
+        'Session expired. Please login again.',
+      );
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+      return;
+    }
+
     final bookingId = const Uuid().v4();
     try {
       await FirebaseFirestore.instance
           .runTransaction((transaction) async {
-        final timingRef = FirebaseFirestore.instance
-            .collection(colTimings)
-            .doc(widget.timingDocId);
+        final timingRef =
+            FirebaseFirestore.instance
+                .collection(colTimings)
+                .doc(widget.timingDocId);
         final timingDoc =
             await transaction.get(timingRef);
         final currentBooked = List<String>.from(
           timingDoc.data()?['booked'] ?? [],
         );
+
         for (final seat in widget.seats) {
           if (currentBooked.contains(seat)) {
             throw Exception(
-              'Seat $seat already booked',
+              'Seat $seat was just booked by someone else. Please select different seats.',
             );
           }
         }
+
         final updates = <String, dynamic>{};
         for (final seat in widget.seats) {
           currentBooked.add(seat);
@@ -189,9 +220,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
           updates,
           SetOptions(merge: true),
         );
-        final bookingRef = FirebaseFirestore.instance
-            .collection(colBookings)
-            .doc(bookingId);
+
+        final bookingRef =
+            FirebaseFirestore.instance
+                .collection(colBookings)
+                .doc(bookingId);
         transaction.set(bookingRef, {
           'bookingId': bookingId,
           'userId': userId,
@@ -215,8 +248,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
           'createdAt': FieldValue.serverTimestamp(),
         });
       });
+
       if (!mounted) return;
-      Navigator.pushReplacement(
+
+      Navigator.pushAndRemoveUntil(
         context,
         AppRoutes.slideUpRoute(
           TicketScreen(
@@ -233,64 +268,70 @@ class _PaymentScreenState extends State<PaymentScreen> {
             passengerEmail: widget.passengerEmail,
           ),
         ),
+        (route) => route.isFirst,
       );
     } catch (e) {
       if (mounted) {
-        _showError('Booking failed: ${e.toString()}');
+        _showError(e.toString());
+        setState(() => _isProcessing = false);
       }
     }
-    if (mounted) setState(() => _isProcessing = false);
   }
 
   void _showError(String message) {
-    // AppSnackbar replaces ScaffoldMessenger
     AppSnackbar.error(context, message);
   }
 
   @override
   Widget build(BuildContext context) {
     R.init(context);
-    return Scaffold(
-      backgroundColor: mobileBackgroundColor,
-      // AppAppBar replaces custom ShaderMask AppBar
-      appBar: AppAppBar(title: 'Payment'),
-      body: Center(
-        child: ConstrainedBox(
-          constraints:
-              BoxConstraints(maxWidth: R.maxWidth),
-          child: _isProcessing
-              ? _buildProcessing()
-              : SingleChildScrollView(
-                  padding: EdgeInsets.all(
-                    R.horizontalPadding,
-                  ),
-                  child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
-                    children: [
-                      _buildMovieCard(),
-                      const Gap(16),
-                      if (widget.passengerName.isNotEmpty)
-                        _buildPassengerCard(),
-                      if (widget.passengerName.isNotEmpty)
+    return PopScope(
+      canPop: !_isProcessing,
+      child: Scaffold(
+        backgroundColor: mobileBackgroundColor,
+        appBar: AppAppBar(
+          title: 'Payment',
+          showBackButton: !_isProcessing,
+        ),
+        body: Center(
+          child: ConstrainedBox(
+            constraints:
+                BoxConstraints(maxWidth: R.maxWidth),
+            child: _isProcessing
+                ? _buildProcessing()
+                : SingleChildScrollView(
+                    padding: EdgeInsets.all(
+                      R.horizontalPadding,
+                    ),
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        _buildMovieCard(),
                         const Gap(16),
-                      _buildOrderDetails(),
-                      const Gap(16),
-                      _buildTotalSection(),
-                      const Gap(24),
-                      kIsWeb
-                          ? _buildWebPayment()
-                          : _buildPaymentMethods(),
-                      const Gap(30),
-                    ],
+                        if (widget
+                            .passengerName.isNotEmpty)
+                          _buildPassengerCard(),
+                        if (widget
+                            .passengerName.isNotEmpty)
+                          const Gap(16),
+                        _buildOrderDetails(),
+                        const Gap(16),
+                        _buildTotalSection(),
+                        const Gap(24),
+                        kIsWeb
+                            ? _buildWebPayment()
+                            : _buildPaymentMethods(),
+                        const Gap(30),
+                      ],
+                    ),
                   ),
-                ),
+          ),
         ),
       ),
     );
   }
 
-  // AppLoader replaces CircularProgressIndicator
   Widget _buildProcessing() {
     return Center(
       child: Column(
@@ -300,7 +341,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
             width: 90,
             height: 90,
             decoration: BoxDecoration(
-              color: appthemecolor.withValues(alpha: 0.1),
+              color: appthemecolor
+                  .withValues(alpha: 0.1),
               shape: BoxShape.circle,
               border: Border.all(
                 color: appthemecolor
@@ -338,7 +380,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
           const Gap(8),
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment:
+                MainAxisAlignment.center,
             children: [
               const Icon(
                 Icons.lock_rounded,
@@ -361,7 +404,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildMovieCard() {
-    // AppCard replaces custom Container
     return AppCard(
       padding: EdgeInsets.zero,
       child: Row(
@@ -378,7 +420,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
               width: R.isPhone ? 90 : 110,
               height: R.isPhone ? 130 : 150,
               fit: BoxFit.cover,
-              // ShimmerBox replaces Container placeholder
               placeholder: (_, __) => ShimmerBox(
                 width: R.isPhone ? 90 : 110,
                 height: R.isPhone ? 130 : 150,
@@ -416,7 +457,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const Gap(10),
-                  // TicketDetailWidget replaces _detailRow()
                   TicketDetailWidget(
                     icon: Icons.theaters_rounded,
                     label: 'Cinema',
@@ -451,7 +491,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _buildPassengerCard() {
-    // AppCard replaces custom Container
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -483,58 +522,74 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ],
           ),
           const Gap(12),
-          // TicketDetailWidget replaces _passengerRow()
           TicketDetailWidget(
             icon: Icons.badge_rounded,
             label: 'Name',
             value: widget.passengerName,
+            layout: TicketDetailLayout.row,
           ),
           const Gap(8),
           TicketDetailWidget(
             icon: Icons.email_outlined,
             label: 'Email',
             value: widget.passengerEmail,
+            layout: TicketDetailLayout.row,
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 150.ms, duration: 400.ms);
+    ).animate().fadeIn(
+          delay: 150.ms,
+          duration: 400.ms,
+        );
   }
 
   Widget _buildOrderDetails() {
-    // AppCard replaces custom Container
     return AppCard(
       child: Column(
         children: [
-          // TicketDetailWidget replaces _orderRow()
           TicketDetailWidget(
             icon: Icons.tag_rounded,
             label: 'Order ID',
             value: '#$_orderId',
+            layout: TicketDetailLayout.row,
           ),
-          // GoldDivider replaces Divider
-          const GoldDivider(margin: EdgeInsets.zero),
+          const GoldDivider(
+            margin: EdgeInsets.symmetric(
+              vertical: 8,
+            ),
+          ),
           TicketDetailWidget(
             icon: Icons.event_seat_rounded,
             label: 'Seats',
             value: widget.seats.join(', '),
+            layout: TicketDetailLayout.row,
           ),
-          const GoldDivider(margin: EdgeInsets.zero),
+          const GoldDivider(
+            margin: EdgeInsets.symmetric(
+              vertical: 8,
+            ),
+          ),
           TicketDetailWidget(
             icon: Icons.confirmation_num_rounded,
             label: 'Tickets',
             value:
                 '${widget.seats.length} ticket${widget.seats.length > 1 ? 's' : ''}',
+            layout: TicketDetailLayout.row,
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 200.ms, duration: 400.ms);
+    ).animate().fadeIn(
+          delay: 200.ms,
+          duration: 400.ms,
+        );
   }
 
   Widget _buildTotalSection() {
     return AppCard(
       backgroundColor:
           appthemecolor.withValues(alpha: 0.05),
-      borderColor: appthemecolor.withValues(alpha: 0.4),
+      borderColor:
+          appthemecolor.withValues(alpha: 0.4),
       hasGlow: true,
       padding: const EdgeInsets.all(20),
       child: Row(
@@ -597,36 +652,35 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
         ],
       ),
-    ).animate().fadeIn(delay: 300.ms, duration: 400.ms);
+    ).animate().fadeIn(
+          delay: 300.ms,
+          duration: 400.ms,
+        );
   }
 
   Widget _buildPaymentMethods() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // SectionHeader replaces custom row
         const SectionHeader(title: 'Pay via UPI'),
-        // AppCard replaces custom Container
-        AppCard(
-          child: _buildUpiApps(),
-        ),
+        AppCard(child: _buildUpiApps()),
       ],
-    ).animate().fadeIn(delay: 400.ms, duration: 400.ms);
+    ).animate().fadeIn(
+          delay: 400.ms,
+          duration: 400.ms,
+        );
   }
 
   Widget _buildWebPayment() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // SectionHeader replaces custom row
         const SectionHeader(
           title: 'Complete Payment',
         ),
-        // AppCard replaces custom Container
         AppCard(
           child: Column(
             children: [
-              // Warning box
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -650,8 +704,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     Expanded(
                       child: Text(
                         'UPI payments are available on '
-                        'Android & iOS only. Use the button '
-                        'below to complete your booking on web.',
+                        'Android & iOS only. Use the '
+                        'button below to complete your '
+                        'booking on web.',
                         style: TextStyle(
                           color: warningColor,
                           fontSize: R.sp(12),
@@ -663,7 +718,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 ),
               ),
               const Gap(16),
-              // AppButton replaces GestureDetector+Container
               AppButton(
                 label: 'Confirm Booking',
                 icon: Icons.check_circle_rounded,
@@ -694,19 +748,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ),
         ),
       ],
-    ).animate().fadeIn(delay: 400.ms, duration: 400.ms);
+    ).animate().fadeIn(
+          delay: 400.ms,
+          duration: 400.ms,
+        );
   }
 
   Widget _buildUpiApps() {
-    // AppLoader replaces CircularProgressIndicator
     if (_apps == null) {
       return const Padding(
         padding: EdgeInsets.all(20),
         child: Center(child: AppLoader()),
       );
     }
-
-    // EmptyState replaces custom empty Container
     if (_apps!.isEmpty) {
       return const EmptyState(
         icon: Icons.payment_rounded,
@@ -715,22 +769,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
             'Please install GPay, PhonePe or Paytm',
       );
     }
-
     return Wrap(
-  spacing: 12,
-  runSpacing: 12,
-  children: _apps!.map(
-    (app) => _UpiAppTile(
-      app: app,
-      onTap: () => _initiatePayment(app),
-    ),
-  ).toList(),
-);
+      spacing: 12,
+      runSpacing: 12,
+      children: _apps!
+          .map(
+            (app) => _UpiAppTile(
+              app: app,
+              onTap: () => _initiatePayment(app),
+            ),
+          )
+          .toList(),
+    );
   }
 }
 
+// ApplicationMeta replaces UpiApp
 class _UpiAppTile extends StatelessWidget {
-  final UpiApp app;
+  final ApplicationMeta app;
   final VoidCallback onTap;
 
   const _UpiAppTile({
@@ -750,19 +806,16 @@ class _UpiAppTile extends StatelessWidget {
           color: surfaceColor2,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: appthemecolor.withValues(alpha: 0.2),
+            color: appthemecolor
+                .withValues(alpha: 0.2),
           ),
         ),
         child: Column(
           children: [
-            Image.memory(
-              app.icon,
-              height: 44,
-              width: 44,
-            ),
+            app.iconImage(44),
             const Gap(6),
             Text(
-              app.name,
+              app.upiApplication.getAppName(),
               style: TextStyle(
                 color: primaryColor,
                 fontSize: R.sp(10),

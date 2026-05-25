@@ -20,18 +20,27 @@ class UserProvider extends ChangeNotifier {
 
   String get initials {
     if (_name.isEmpty) return 'U';
-    final parts = _name.split(' ');
+    final parts = _name.trim().split(' ');
     if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      return '${parts[0][0]}${parts[1][0]}'
+          .toUpperCase();
     }
     return _name
-        .substring(0, _name.length < 2 ? _name.length : 2)
+        .substring(
+          0,
+          _name.length < 2 ? _name.length : 2,
+        )
         .toUpperCase();
   }
 
   Future<void> initialize() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
+      // BUG 4 fix: refresh token on initialize
+      try {
+        await user.getIdToken(true);
+      } catch (_) {}
+
       _uid = user.uid;
       _isLoggedIn = true;
       await fetchUserData();
@@ -42,28 +51,35 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> fetchUserData() async {
+    // BUG 4 fix: guard empty uid
     if (_uid.isEmpty) return;
+
     _isLoading = true;
     notifyListeners();
+
     try {
       final doc = await FirebaseFirestore.instance
           .collection(colUsers)
           .doc(_uid)
           .get();
+
       if (doc.exists) {
         final data = doc.data()!;
         _name = data['username'] ?? '';
         _email = data['email'] ?? '';
         _city = data['city'] ?? '';
       }
-    } catch (e) {
-      debugPrint('Error fetching user: $e');
+    } catch (_) {
+      // Silent fail — keep existing data
     }
+
     _isLoading = false;
     notifyListeners();
   }
 
   Future<void> setUser(String uid) async {
+    // BUG 4 fix: guard empty uid
+    if (uid.isEmpty) return;
     _uid = uid;
     _isLoggedIn = true;
     await fetchUserData();

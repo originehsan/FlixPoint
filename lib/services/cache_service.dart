@@ -1,21 +1,9 @@
 
-class CacheEntry {
-  final dynamic data;
-  final DateTime cachedAt;
-  final Duration duration;
-
-  CacheEntry({
-    required this.data,
-    required this.cachedAt,
-    this.duration = const Duration(minutes: 30),
-  });
-
-  bool get isExpired =>
-      DateTime.now().difference(cachedAt) > duration;
-}
+import 'package:movieticket/services/cache_entry.dart';
 
 class CacheService {
-  static final CacheService _instance = CacheService._internal();
+  static final CacheService _instance =
+      CacheService._internal();
   factory CacheService() => _instance;
   CacheService._internal();
 
@@ -24,7 +12,8 @@ class CacheService {
   void set(
     String key,
     dynamic data, {
-    Duration duration = const Duration(minutes: 30),
+    Duration duration =
+        const Duration(minutes: 30),
   }) {
     _cache[key] = CacheEntry(
       data: data,
@@ -53,11 +42,14 @@ class CacheService {
     return true;
   }
 
-  void remove(String key) => _cache.remove(key);
+  void remove(String key) =>
+      _cache.remove(key);
 
   void clear() => _cache.clear();
 
   void clearExpired() {
-    _cache.removeWhere((key, entry) => entry.isExpired);
+    _cache.removeWhere(
+      (key, entry) => entry.isExpired,
+    );
   }
 }

@@ -7,8 +7,9 @@ import 'package:movieticket/provider/user_provider.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/navbar.dart';
 import 'package:movieticket/utils/page_transitions.dart';
-import 'package:movieticket/utils/pickimage.dart';
 import 'package:movieticket/utils/responsive.dart';
+import 'package:movieticket/widgets/common/app_button.dart';
+import 'package:movieticket/widgets/common/snackbars/app_snackbar.dart';
 import 'package:movieticket/widgets/flixpoint_logo.dart';
 import 'package:movieticket/widgets/text_field.dart';
 import 'package:provider/provider.dart';
@@ -22,10 +23,10 @@ class SignUp extends StatefulWidget {
 
 class _SignUpState extends State<SignUp> {
   bool _isLoading = false;
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController =
       TextEditingController();
 
   @override
@@ -42,19 +43,36 @@ class _SignUpState extends State<SignUp> {
         _emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
-      showSnackBar('Please fill all fields', context);
+      AppSnackbar.warning(
+        context,
+        'Please fill all fields',
+      );
       return;
     }
 
-    if (_passwordController.text != _confirmPasswordController.text) {
-      showSnackBar('Passwords do not match', context);
+    if (_passwordController.text !=
+        _confirmPasswordController.text) {
+      AppSnackbar.error(
+        context,
+        'Passwords do not match',
+      );
       return;
     }
 
     if (_passwordController.text.length < 6) {
-      showSnackBar(
-        'Password must be at least 6 characters',
+      AppSnackbar.error(
         context,
+        'Password must be at least 6 characters',
+      );
+      return;
+    }
+
+    // Basic email validation
+    if (!_emailController.text.contains('@') ||
+        !_emailController.text.contains('.')) {
+      AppSnackbar.error(
+        context,
+        'Please enter a valid email address',
       );
       return;
     }
@@ -74,9 +92,22 @@ class _SignUpState extends State<SignUp> {
         context,
         listen: false,
       );
-      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+      // BUG 4 fix: guard empty uid
+      final uid =
+          FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (uid.isEmpty) {
+        setState(() => _isLoading = false);
+        AppSnackbar.error(
+          context,
+          'Registration failed. Please try again.',
+        );
+        return;
+      }
+
       await userProvider.setUser(uid);
       if (!mounted) return;
+
       setState(() => _isLoading = false);
       Navigator.of(context).pushReplacement(
         AppRoutes.homeEntryRoute(
@@ -85,7 +116,10 @@ class _SignUpState extends State<SignUp> {
       );
     } else {
       setState(() => _isLoading = false);
-      showSnackBar(res, context);
+      // AppSnackbar replaces showSnackBar
+      // BUG 22: friendly error messages
+      // come from AuthMethods already
+      AppSnackbar.error(context, res);
     }
   }
 
@@ -101,7 +135,8 @@ class _SignUpState extends State<SignUp> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: R.maxWidth),
+          constraints:
+              BoxConstraints(maxWidth: R.maxWidth),
           child: SingleChildScrollView(
             padding: EdgeInsets.symmetric(
               horizontal: R.horizontalPadding,
@@ -110,7 +145,6 @@ class _SignUpState extends State<SignUp> {
               children: [
                 Gap(R.px(24)),
 
-                // FlixPoint animated logo
                 const FlixPointLogo(
                   animate: true,
                   fontSize: 32,
@@ -120,72 +154,92 @@ class _SignUpState extends State<SignUp> {
 
                 Gap(R.px(32)),
 
-                // Name
-                _fieldLabel('What should we call you?'),
+                _fieldLabel(
+                  'What should we call you?',
+                ),
                 Gap(R.px(6)),
                 TextFieldInput(
-                  textEditingController: _nameController,
+                  textEditingController:
+                      _nameController,
                   hintText: 'Enter your name',
                   textInputType: TextInputType.name,
-                  prefixIcon: Icons.person_outline_rounded,
-                  autofillHints: const [AutofillHints.name],
+                  prefixIcon:
+                      Icons.person_outline_rounded,
+                  autofillHints: const [
+                    AutofillHints.name,
+                  ],
                 ),
 
                 Gap(R.px(16)),
 
-                // Email
                 _fieldLabel('Email'),
                 Gap(R.px(6)),
                 TextFieldInput(
-                  textEditingController: _emailController,
+                  textEditingController:
+                      _emailController,
                   hintText: 'Enter your email',
-                  textInputType: TextInputType.emailAddress,
+                  textInputType:
+                      TextInputType.emailAddress,
                   prefixIcon: Icons.email_outlined,
-                  autofillHints: const [AutofillHints.email],
+                  autofillHints: const [
+                    AutofillHints.email,
+                  ],
                 ),
 
                 Gap(R.px(16)),
 
-                // Password
                 _fieldLabel('Password'),
                 Gap(R.px(6)),
                 TextFieldInput(
-                  textEditingController: _passwordController,
+                  textEditingController:
+                      _passwordController,
                   hintText: 'Create a password',
                   textInputType: TextInputType.text,
                   isPass: true,
-                  prefixIcon: Icons.lock_outline_rounded,
-                  autofillHints: const [AutofillHints.newPassword],
+                  prefixIcon:
+                      Icons.lock_outline_rounded,
+                  autofillHints: const [
+                    AutofillHints.newPassword,
+                  ],
                 ),
 
                 Gap(R.px(16)),
 
-                // Confirm Password
                 _fieldLabel('Confirm Password'),
                 Gap(R.px(6)),
                 TextFieldInput(
-                  textEditingController: _confirmPasswordController,
+                  textEditingController:
+                      _confirmPasswordController,
                   hintText: 'Confirm your password',
                   textInputType: TextInputType.text,
                   isPass: true,
-                  prefixIcon: Icons.lock_outline_rounded,
-                  autofillHints: const [AutofillHints.newPassword],
+                  prefixIcon:
+                      Icons.lock_outline_rounded,
+                  autofillHints: const [
+                    AutofillHints.newPassword,
+                  ],
                 ),
 
                 Gap(R.px(32)),
 
-                // Create account button
+                // TweenAnimationBuilder for glow
+                // AppButton inside for consistency
                 TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0.3, end: 1.0),
-                  duration: const Duration(seconds: 2),
+                  duration:
+                      const Duration(seconds: 2),
                   curve: Curves.easeInOut,
                   builder: (context, value, child) {
                     return Container(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius:
+                            BorderRadius.circular(30),
                         boxShadow: [
                           BoxShadow(
-                            color: appthemecolor.withValues(alpha: 0.3 * value),
+                            color: appthemecolor
+                                .withValues(
+                              alpha: 0.3 * value,
+                            ),
                             blurRadius: 20 * value,
                             spreadRadius: 2 * value,
                           ),
@@ -194,43 +248,22 @@ class _SignUpState extends State<SignUp> {
                       child: child,
                     );
                   },
-                  child: GestureDetector(
-                    onTap: _isLoading ? null : _signUp,
-                    child: Container(
-                      height: 56,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [appthemecolor, goldDark],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      alignment: Alignment.center,
-                      child: _isLoading
-                          ? const CircularProgressIndicator(
-                              color: Colors.black,
-                              strokeWidth: 2,
-                            )
-                          : Text(
-                              'Create Account',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: R.sp(16),
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                    ),
+                  child: AppButton(
+                    label: 'Create Account',
+                    height: 56,
+                    // AppLoader.small replaces CPI
+                    isLoading: _isLoading,
+                    onTap: _isLoading
+                        ? null
+                        : _signUp,
                   ),
                 ),
 
                 Gap(R.px(24)),
 
-                // Sign in link
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment:
+                      MainAxisAlignment.center,
                   children: [
                     Text(
                       'Already have an account? ',
@@ -240,9 +273,12 @@ class _SignUpState extends State<SignUp> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => Navigator.pushReplacement(
+                      onTap: () =>
+                          Navigator.pushReplacement(
                         context,
-                        AppRoutes.authRoute(const LoginIn()),
+                        AppRoutes.authRoute(
+                          const LoginIn(),
+                        ),
                       ),
                       child: Text(
                         'Sign In',

@@ -1,13 +1,11 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:movieticket/services/cache_service.dart';
 import 'package:movieticket/services/network_service.dart';
 import 'package:movieticket/utils/constants.dart';
 import 'package:movieticket/utils/indian_filter.dart';
 
 class TmdbService {
-  static final TmdbService _instance =
-      TmdbService._internal();
+  static final TmdbService _instance = TmdbService._internal();
   factory TmdbService() => _instance;
   TmdbService._internal();
 
@@ -43,17 +41,12 @@ class TmdbService {
         'page': 1,
       };
 
-  // ═══════════════════════════════════
-  // CACHED GET HELPER
-  // ═══════════════════════════════════
   Future<dynamic> _cachedGet(
     String url, {
     Map<String, dynamic>? params,
-    Duration cacheDuration =
-        const Duration(minutes: 30),
+    Duration cacheDuration = const Duration(minutes: 30),
   }) async {
-    final cacheKey =
-        '$url${params?.toString() ?? ''}';
+    final cacheKey = '$url${params?.toString() ?? ''}';
 
     if (_cache.has(cacheKey)) {
       return _cache.get(cacheKey);
@@ -72,38 +65,22 @@ class TmdbService {
     return response.data;
   }
 
-  // ═══════════════════════════════════
-  // NOW PLAYING — Indian movies only
-  // Fetches region=IN then filters
-  // by original_language
-  // ═══════════════════════════════════
-  Future<List<Map<String, dynamic>>>
-      getNowPlaying() async {
+  Future<List<Map<String, dynamic>>> getNowPlaying() async {
     try {
       final data = await _cachedGet(
         '$tmdbBaseUrl/movie/now_playing',
         params: _indiaParams,
       );
       final results = data['results'] as List;
-      final movies =
-          results.cast<Map<String, dynamic>>();
-
-      // Cache all IDs for isMovieNowPlayingInIndia
-      _nowPlayingIds =
-          movies.map((m) => m['id'] as int).toList();
-
-      // Filter to Indian origin movies only
+      final movies = results.cast<Map<String, dynamic>>();
+      _nowPlayingIds = movies.map((m) => m['id'] as int).toList();
       return filterIndian(movies);
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }
 
-  // ═══════════════════════════════════
-  // UPCOMING — Indian movies only
-  // ═══════════════════════════════════
-  Future<List<Map<String, dynamic>>>
-      getUpcoming() async {
+  Future<List<Map<String, dynamic>>> getUpcoming() async {
     try {
       final data = await _cachedGet(
         '$tmdbBaseUrl/movie/upcoming',
@@ -113,16 +90,12 @@ class TmdbService {
       return filterIndian(
         results.cast<Map<String, dynamic>>(),
       );
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }
 
-  // ═══════════════════════════════════
-  // POPULAR — Indian movies only
-  // ═══════════════════════════════════
-  Future<List<Map<String, dynamic>>>
-      getPopular() async {
+  Future<List<Map<String, dynamic>>> getPopular() async {
     try {
       final data = await _cachedGet(
         '$tmdbBaseUrl/movie/popular',
@@ -132,16 +105,12 @@ class TmdbService {
       return filterIndian(
         results.cast<Map<String, dynamic>>(),
       );
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }
 
-  // ═══════════════════════════════════
-  // TOP RATED — Indian movies only
-  // ═══════════════════════════════════
-  Future<List<Map<String, dynamic>>>
-      getTopRated() async {
+  Future<List<Map<String, dynamic>>> getTopRated() async {
     try {
       final data = await _cachedGet(
         '$tmdbBaseUrl/movie/top_rated',
@@ -151,17 +120,12 @@ class TmdbService {
       return filterIndian(
         results.cast<Map<String, dynamic>>(),
       );
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }
 
-  // ═══════════════════════════════════
-  // TRENDING — filter Indian movies
-  // Weekly trending then filter
-  // ═══════════════════════════════════
-  Future<List<Map<String, dynamic>>>
-      getTrending() async {
+  Future<List<Map<String, dynamic>>> getTrending() async {
     try {
       final data = await _cachedGet(
         '$tmdbBaseUrl/trending/movie/week',
@@ -172,19 +136,13 @@ class TmdbService {
       return filterIndian(
         results.cast<Map<String, dynamic>>(),
       );
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }
 
-  // ═══════════════════════════════════
-  // MOVIES BY LANGUAGE
-  // Uses discover API with language filter
-  // vote_count.gte=50 removes spam/unreleased
-  // sort_by=popularity.desc for best results
-  // ═══════════════════════════════════
-  Future<List<Map<String, dynamic>>>
-      getMoviesByLanguage(String langCode) async {
+  Future<List<Map<String, dynamic>>> getMoviesByLanguage(
+      String langCode) async {
     try {
       final data = await _cachedGet(
         '$tmdbBaseUrl/discover/movie',
@@ -199,16 +157,12 @@ class TmdbService {
       );
       final results = data['results'] as List;
       return results.cast<Map<String, dynamic>>();
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }
 
-  // ═══════════════════════════════════
-  // SEARCH
-  // ═══════════════════════════════════
-  Future<List<Map<String, dynamic>>>
-      searchMovies(String query) async {
+  Future<List<Map<String, dynamic>>> searchMovies(String query) async {
     try {
       final data = await _cachedGet(
         '$tmdbBaseUrl/search/movie',
@@ -221,50 +175,37 @@ class TmdbService {
       );
       final results = data['results'] as List;
       return results.cast<Map<String, dynamic>>();
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }
 
-  // ═══════════════════════════════════
-  // MOVIE DETAILS COMPLETE
-  // Single API call with append_to_response
-  // ═══════════════════════════════════
-  Future<Map<String, dynamic>?>
-      getMovieDetailsComplete(int movieId) async {
+  Future<Map<String, dynamic>?> getMovieDetailsComplete(int movieId) async {
     try {
       final data = await _cachedGet(
         '$tmdbBaseUrl/movie/$movieId',
         params: {
           ..._baseParams,
-          'append_to_response':
-              'credits,videos,similar,release_dates',
+          'append_to_response': 'credits,videos,similar,release_dates',
         },
       );
       return data as Map<String, dynamic>;
-    } catch (e) {
-      debugPrint(
-        'getMovieDetailsComplete error: $e',
-      );
+    } catch (_) {
+      // Removed debugPrint
       return null;
     }
   }
 
-  // Parse helpers — no extra API calls
   List<Map<String, dynamic>> parseCast(
     Map<String, dynamic>? complete,
   ) {
     try {
       if (complete == null) return [];
-      final credits =
-          complete['credits'] as Map<String, dynamic>?;
+      final credits = complete['credits'] as Map<String, dynamic>?;
       if (credits == null) return [];
       final cast = credits['cast'] as List? ?? [];
-      return cast
-          .take(10)
-          .toList()
-          .cast<Map<String, dynamic>>();
-    } catch (e) {
+      return cast.take(10).toList().cast<Map<String, dynamic>>();
+    } catch (_) {
       return [];
     }
   }
@@ -274,20 +215,15 @@ class TmdbService {
   ) {
     try {
       if (complete == null) return null;
-      final videos =
-          complete['videos'] as Map<String, dynamic>?;
+      final videos = complete['videos'] as Map<String, dynamic>?;
       if (videos == null) return null;
       final results = videos['results'] as List? ?? [];
       final trailer = results.firstWhere(
-        (v) =>
-            v['type'] == 'Trailer' &&
-            v['site'] == 'YouTube',
+        (v) => v['type'] == 'Trailer' && v['site'] == 'YouTube',
         orElse: () => null,
       );
-      return trailer != null
-          ? trailer['key'] as String
-          : null;
-    } catch (e) {
+      return trailer != null ? trailer['key'] as String : null;
+    } catch (_) {
       return null;
     }
   }
@@ -297,53 +233,37 @@ class TmdbService {
   ) {
     try {
       if (complete == null) return [];
-      final similar =
-          complete['similar'] as Map<String, dynamic>?;
+      final similar = complete['similar'] as Map<String, dynamic>?;
       if (similar == null) return [];
       final results = similar['results'] as List? ?? [];
-      return results
-          .take(10)
-          .toList()
-          .cast<Map<String, dynamic>>();
-    } catch (e) {
+      return results.take(10).toList().cast<Map<String, dynamic>>();
+    } catch (_) {
       return [];
     }
   }
 
-  // Backward compatible methods
   Future<Map<String, dynamic>?> getMovieDetails(
     int movieId,
   ) async =>
       getMovieDetailsComplete(movieId);
 
-  Future<List<Map<String, dynamic>>> getMovieCredits(
-    int movieId,
-  ) async {
-    final complete =
-        await getMovieDetailsComplete(movieId);
+  Future<List<Map<String, dynamic>>> getMovieCredits(int movieId) async {
+    final complete = await getMovieDetailsComplete(movieId);
     return parseCast(complete);
   }
 
   Future<String?> getMovieTrailer(
     int movieId,
   ) async {
-    final complete =
-        await getMovieDetailsComplete(movieId);
+    final complete = await getMovieDetailsComplete(movieId);
     return parseTrailer(complete);
   }
 
-  Future<List<Map<String, dynamic>>> getSimilarMovies(
-    int movieId,
-  ) async {
-    final complete =
-        await getMovieDetailsComplete(movieId);
+  Future<List<Map<String, dynamic>>> getSimilarMovies(int movieId) async {
+    final complete = await getMovieDetailsComplete(movieId);
     return parseSimilar(complete);
   }
 
-  // ═══════════════════════════════════
-  // IS MOVIE NOW PLAYING IN INDIA
-  // Uses cached IDs — zero API call
-  // ═══════════════════════════════════
   Future<bool> isMovieNowPlayingInIndia(
     int movieId,
   ) async {
@@ -353,16 +273,12 @@ class TmdbService {
     try {
       await getNowPlaying();
       return _nowPlayingIds.contains(movieId);
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }
 
-  // ═══════════════════════════════════
-  // RECOMMENDATIONS
-  // ═══════════════════════════════════
-  Future<List<Map<String, dynamic>>>
-      getRecommendations(int movieId) async {
+  Future<List<Map<String, dynamic>>> getRecommendations(int movieId) async {
     try {
       final data = await _cachedGet(
         '$tmdbBaseUrl/movie/$movieId/recommendations',
@@ -373,17 +289,12 @@ class TmdbService {
       );
       final results = data['results'] as List;
       return results.cast<Map<String, dynamic>>();
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }
 
-  // ═══════════════════════════════════
-  // MOVIES BY GENRE
-  // ═══════════════════════════════════
-  Future<List<Map<String, dynamic>>> getMoviesByGenre(
-    int genreId,
-  ) async {
+  Future<List<Map<String, dynamic>>> getMoviesByGenre(int genreId) async {
     try {
       final data = await _cachedGet(
         '$tmdbBaseUrl/discover/movie',
@@ -395,7 +306,7 @@ class TmdbService {
       );
       final results = data['results'] as List;
       return results.cast<Map<String, dynamic>>();
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }
@@ -410,8 +321,7 @@ class TmdbService {
   }
 
   String getBackdropUrl(String? backdropPath) {
-    if (backdropPath == null ||
-        backdropPath.isEmpty) {
+    if (backdropPath == null || backdropPath.isEmpty) {
       return '';
     }
     return '$tmdbImageOriginal$backdropPath';

@@ -4,7 +4,8 @@ import 'package:movieticket/models/registration.dart';
 
 class AuthMethods {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore =
+      FirebaseFirestore.instance;
 
   Future<String> signUpUser({
     required String email,
@@ -12,14 +13,15 @@ class AuthMethods {
     required String password,
     String city = '',
   }) async {
-    String res = "some error occurred";
+    String res = 'An error occurred';
     try {
-      UserCredential cred = await _auth.createUserWithEmailAndPassword(
+      final cred =
+          await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      UserDetails user = UserDetails(
+      final user = UserDetails(
         email: email,
         name: name,
         city: city,
@@ -30,14 +32,26 @@ class AuthMethods {
           .doc(cred.user!.uid)
           .set(user.toJson());
 
-      res = "success";
+      res = 'success';
     } on FirebaseAuthException catch (error) {
-      if (error.code == "email-already-in-use") {
-        res = "This email is already in use.";
-      } else if (error.code == "weak-password") {
-        res = "Password must be at least 6 characters.";
-      } else {
-        res = error.message ?? "An error occurred.";
+      switch (error.code) {
+        case 'email-already-in-use':
+          res =
+              'This email is already registered. Please sign in.';
+          break;
+        case 'weak-password':
+          res =
+              'Password must be at least 6 characters.';
+          break;
+        case 'invalid-email':
+          res = 'Please enter a valid email address.';
+          break;
+        case 'network-request-failed':
+          res =
+              'No internet connection. Please try again.';
+          break;
+        default:
+          res = error.message ?? 'An error occurred.';
       }
     } catch (err) {
       res = err.toString();
@@ -49,26 +63,41 @@ class AuthMethods {
     required String email,
     required String password,
   }) async {
-    String res = 'some error occurred';
+    String res = 'An error occurred';
     try {
-      if (email.isNotEmpty && password.isNotEmpty) {
-        await _auth.signInWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-        res = "success";
-      } else {
-        res = "Please enter all fields.";
+      if (email.isEmpty || password.isEmpty) {
+        return 'Please enter all fields.';
       }
+
+      await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      res = 'success';
     } on FirebaseAuthException catch (error) {
-      if (error.code == "invalid-credential") {
-        res = "Invalid email or password.";
-      } else if (error.code == "user-not-found") {
-        res = "No account found with this email.";
-      } else if (error.code == "wrong-password") {
-        res = "Incorrect password.";
-      } else {
-        res = error.message ?? "An error occurred.";
+      switch (error.code) {
+        case 'invalid-credential':
+        case 'wrong-password':
+        case 'user-not-found':
+          res = 'Invalid email or password.';
+          break;
+        case 'user-disabled':
+          res =
+              'This account has been disabled. Contact support.';
+          break;
+        case 'too-many-requests':
+          res =
+              'Too many failed attempts. Please try again later.';
+          break;
+        case 'network-request-failed':
+          res =
+              'No internet connection. Please try again.';
+          break;
+        case 'invalid-email':
+          res = 'Please enter a valid email address.';
+          break;
+        default:
+          res = error.message ?? 'An error occurred.';
       }
     } catch (error) {
       res = error.toString();

@@ -17,6 +17,7 @@ import 'package:movieticket/utils/indian_filter.dart';
 import 'package:movieticket/utils/page_transitions.dart';
 import 'package:movieticket/utils/responsive.dart';
 import 'package:movieticket/widgets/common/app_badge.dart';
+import 'package:movieticket/widgets/common/app_button.dart';
 import 'package:movieticket/widgets/common/loaders/app_loader.dart';
 import 'package:movieticket/widgets/common/section_header.dart';
 import 'package:movieticket/widgets/common/shimmer_box.dart';
@@ -26,7 +27,10 @@ import 'package:provider/provider.dart';
 
 class Homescreen extends StatefulWidget {
   final String name;
-  const Homescreen({super.key, required this.name});
+  const Homescreen({
+    super.key,
+    required this.name,
+  });
 
   @override
   State<Homescreen> createState() => _HomescreenState();
@@ -34,43 +38,46 @@ class Homescreen extends StatefulWidget {
 
 class _HomescreenState extends State<Homescreen> {
   final TmdbService _tmdbService = TmdbService();
-  int _featuredIndex = 0;
+
+  // BUG 35 fix: ValueNotifier prevents
+  // full homescreen rebuild on carousel change
+  final ValueNotifier<int> _featuredIndex = ValueNotifier(0);
+
   List<TmdbMovie> _recommendations = [];
   bool _isLoadingRecommendations = false;
   bool _isOffline = false;
-  StreamSubscription<List<ConnectivityResult>>?
-      _connectivitySubscription;
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadRecommendations();
-    });
-    _connectivitySubscription =
-        Connectivity().onConnectivityChanged.listen(
-      (result) {
-        final wasOffline = _isOffline;
-        if (mounted) {
-          setState(() {
-            _isOffline = result
-                .contains(ConnectivityResult.none);
-          });
-        }
-        if (wasOffline && !_isOffline && mounted) {
-          Provider.of<MovieProvider>(
-            context,
-            listen: false,
-          ).refresh();
-          _loadRecommendations();
-        }
-      },
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _loadRecommendations(),
     );
+    _connectivitySubscription =
+        Connectivity().onConnectivityChanged.listen((result) {
+      final wasOffline = _isOffline;
+      if (mounted) {
+        setState(() {
+          _isOffline = result.contains(
+            ConnectivityResult.none,
+          );
+        });
+      }
+      if (wasOffline && !_isOffline && mounted) {
+        Provider.of<MovieProvider>(
+          context,
+          listen: false,
+        ).refresh();
+        _loadRecommendations();
+      }
+    });
   }
 
   @override
   void dispose() {
     _connectivitySubscription?.cancel();
+    _featuredIndex.dispose();
     super.dispose();
   }
 
@@ -79,9 +86,7 @@ class _HomescreenState extends State<Homescreen> {
       setState(
         () => _isLoadingRecommendations = true,
       );
-      final uid =
-          FirebaseAuth.instance.currentUser?.uid ??
-              '';
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
       if (uid.isEmpty) {
         setState(
           () => _isLoadingRecommendations = false,
@@ -93,7 +98,7 @@ class _HomescreenState extends State<Homescreen> {
           .collection('bookings')
           .where('userId', isEqualTo: uid)
           .orderBy('createdAt', descending: true)
-          .limit(1)
+          .limit(3)
           .get();
 
       if (bookings.docs.isEmpty) {
@@ -103,31 +108,32 @@ class _HomescreenState extends State<Homescreen> {
         return;
       }
 
-      final lastBooking = bookings.docs.first.data();
-      final lastMovieId = lastBooking['movieId'];
-      if (lastMovieId == null) {
-        setState(
-          () => _isLoadingRecommendations = false,
-        );
-        return;
-      }
+      // BUG 28 fix: try multiple recent bookings
+      // not just the last one
+      final List<TmdbMovie> allRecs = [];
+      for (final doc in bookings.docs) {
+        final data = doc.data();
+        final movieId = data['movieId'];
+        if (movieId == null) continue;
 
-      final recs =
-          await _tmdbService.getRecommendations(
-        lastMovieId is int
-            ? lastMovieId
-            : int.parse('$lastMovieId'),
-      );
+        final recs = await _tmdbService.getRecommendations(
+          movieId is int ? movieId : int.parse('$movieId'),
+        );
+        allRecs.addAll(
+          recs.map((m) => TmdbMovie.fromJson(m)).toList(),
+        );
+        if (allRecs.length >= 10) break;
+      }
 
       if (mounted) {
         setState(() {
-          _recommendations = recs
-              .map((m) => TmdbMovie.fromJson(m))
-              .toList();
+          // Remove duplicates by id
+          final seen = <int>{};
+          _recommendations = allRecs.where((m) => seen.add(m.id)).toList();
           _isLoadingRecommendations = false;
         });
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(
           () => _isLoadingRecommendations = false,
@@ -136,14 +142,34 @@ class _HomescreenState extends State<Homescreen> {
     }
   }
 
+  // Time-based greeting
   String _getGreeting() {
     final hour = DateTime.now().hour;
-    if (hour < 12) return 'Morning';
-    if (hour < 17) return 'Afternoon';
-    return 'Evening';
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
   }
 
-  void _navigateToDetails(TmdbMovie movie) {
+  // Time-based emoji
+  String _getGreetingEmoji() {
+    final hour = DateTime.now().hour;
+    if (hour < 17) return '☀️';
+    return '🌙';
+  }
+
+  // Time-based subtitle
+  String _getGreetingSubtitle() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Ready for a movie today?';
+    if (hour < 17) return 'What will you watch?';
+    if (hour < 20) return 'Perfect time for a movie!';
+    return 'Enjoy tonight\'s show!';
+  }
+
+  void _navigateToDetails(
+    TmdbMovie movie,
+    String section,
+  ) {
     Navigator.push(
       context,
       AppRoutes.scaleRoute(
@@ -155,8 +181,7 @@ class _HomescreenState extends State<Homescreen> {
   @override
   Widget build(BuildContext context) {
     R.init(context);
-    final movieProvider =
-        Provider.of<MovieProvider>(context);
+    final movieProvider = Provider.of<MovieProvider>(context);
 
     return Scaffold(
       backgroundColor: mobileBackgroundColor,
@@ -177,26 +202,21 @@ class _HomescreenState extends State<Homescreen> {
                     maxWidth: R.maxWidth,
                   ),
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (_isOffline)
                         OfflineBanner(
                           onRetry: () async {
                             final result =
-                                await Connectivity()
-                                    .checkConnectivity();
+                                await Connectivity().checkConnectivity();
                             if (mounted) {
                               setState(() {
-                                _isOffline = result
-                                    .contains(
-                                  ConnectivityResult
-                                      .none,
+                                _isOffline = result.contains(
+                                  ConnectivityResult.none,
                                 );
                               });
                               if (!_isOffline) {
-                                Provider.of
-                                    <MovieProvider>(
+                                Provider.of<MovieProvider>(
                                   context,
                                   listen: false,
                                 ).refresh();
@@ -211,6 +231,7 @@ class _HomescreenState extends State<Homescreen> {
                         title: 'Now Playing',
                         movies: movieProvider.nowPlaying,
                         isLoading: movieProvider.isLoading,
+                        section: 'nowplaying',
                       ),
                       _buildMovieSection(
                         title: 'Coming Soon',
@@ -218,8 +239,8 @@ class _HomescreenState extends State<Homescreen> {
                         isLoading: movieProvider.isLoading,
                         badgeText: 'SOON',
                         badgeColor: appthemecolor,
+                        section: 'upcoming',
                       ),
-                      // Indian Cinema language tabs
                       _buildIndianCinemaSection(
                         movieProvider,
                       ),
@@ -227,16 +248,16 @@ class _HomescreenState extends State<Homescreen> {
                         title: 'Popular',
                         movies: movieProvider.popular,
                         isLoading: movieProvider.isLoading,
+                        section: 'popular',
                       ),
                       _buildMovieSection(
                         title: 'Recommended For You',
                         movies: _recommendations,
-                        isLoading:
-                            _isLoadingRecommendations,
+                        isLoading: _isLoadingRecommendations,
                         badgeText: 'FOR YOU',
-                        badgeColor:
-                            const Color(0xFF6D28D9),
+                        badgeColor: const Color(0xFF6D28D9),
                         hideIfEmpty: true,
+                        section: 'recommended',
                       ),
                       _buildMovieSection(
                         title: 'Trending Today',
@@ -245,6 +266,7 @@ class _HomescreenState extends State<Homescreen> {
                         badgeText: 'HOT',
                         badgeColor: errorColor,
                         hideIfEmpty: true,
+                        section: 'trending',
                       ),
                       const Gap(20),
                     ],
@@ -264,39 +286,65 @@ class _HomescreenState extends State<Homescreen> {
       floating: true,
       snap: true,
       elevation: 0,
-      toolbarHeight: 70,
+      toolbarHeight: 80,
       title: Row(
         children: [
-          Column(
-            crossAxisAlignment:
-                CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Good ${_getGreeting()}, ${widget.name}',
-                style: TextStyle(
-                  color: secondaryColor,
-                  fontSize: R.sp(12),
-                  fontWeight: FontWeight.w400,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Greeting with emoji
+                Row(
+                  children: [
+                    Text(
+                      _getGreetingEmoji(),
+                      style: const TextStyle(
+                        fontSize: 14,
+                      ),
+                    ),
+                    const Gap(6),
+                    Text(
+                      _getGreeting(),
+                      style: TextStyle(
+                        color: secondaryColor,
+                        fontSize: R.sp(12),
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              ShaderMask(
-                shaderCallback: (bounds) =>
-                    const LinearGradient(
-                  colors: [appthemecolor, goldLight],
-                ).createShader(bounds),
-                child: Text(
-                  'FlixPoint',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: R.sp(24),
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 2,
+                const Gap(2),
+                // Name with gold accent
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [
+                      primaryColor,
+                      appthemecolor,
+                    ],
+                  ).createShader(bounds),
+                  child: Text(
+                    widget.name.isEmpty ? 'FlixPoint' : widget.name,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: R.sp(20),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
-              ),
-            ],
+                // Subtitle based on time
+                Text(
+                  _getGreetingSubtitle(),
+                  style: TextStyle(
+                    color: secondaryColor.withValues(alpha: 0.6),
+                    fontSize: R.sp(11),
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
           ),
-          const Spacer(),
+          // Search button
           GestureDetector(
             onTap: () => Navigator.push(
               context,
@@ -310,12 +358,11 @@ class _HomescreenState extends State<Homescreen> {
                 color: surfaceColor,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: appthemecolor
-                      .withValues(alpha: 0.3),
+                  color: appthemecolor.withValues(alpha: 0.3),
                 ),
               ),
               child: Icon(
-                Icons.search,
+                Icons.search_rounded,
                 color: appthemecolor,
                 size: R.sp(20),
               ),
@@ -343,65 +390,71 @@ class _HomescreenState extends State<Homescreen> {
       return const SizedBox();
     }
 
+    final featured = movieProvider.nowPlaying.take(5).toList();
+
     return Column(
       children: [
         CarouselSlider(
           options: CarouselOptions(
             height: R.featuredHeight,
             autoPlay: true,
-            autoPlayInterval:
-                const Duration(seconds: 4),
-            autoPlayAnimationDuration:
-                const Duration(milliseconds: 800),
+            autoPlayInterval: const Duration(seconds: 4),
+            autoPlayAnimationDuration: const Duration(milliseconds: 800),
             enlargeCenterPage: true,
             enlargeFactor: 0.15,
             viewportFraction: 0.85,
-            onPageChanged: (index, _) => setState(
-              () => _featuredIndex = index,
-            ),
+            onPageChanged: (index, _) {
+              // BUG 35 fix: ValueNotifier
+              // only rebuilds dot indicators
+              _featuredIndex.value = index;
+            },
           ),
-          items: movieProvider.nowPlaying
-              .take(5)
+          items: featured
               .map(
                 (movie) => _FeaturedCard(
                   movie: movie,
                   tmdbService: _tmdbService,
-                  onTap: () =>
-                      _navigateToDetails(movie),
+                  onTap: () => _navigateToDetails(
+                    movie,
+                    'featured',
+                  ),
                 ),
               )
               .toList(),
         ),
         const Gap(10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            movieProvider.nowPlaying.take(5).length,
-            (index) => AnimatedContainer(
-              duration: const Duration(
-                milliseconds: 400,
-              ),
-              margin: const EdgeInsets.symmetric(
-                horizontal: 3,
-              ),
-              width: _featuredIndex == index ? 24 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: _featuredIndex == index
-                    ? appthemecolor
-                    : secondaryColor
-                        .withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(3),
-                boxShadow: _featuredIndex == index
-                    ? [
-                        BoxShadow(
-                          color: appthemecolor
-                              .withValues(alpha: 0.5),
-                          blurRadius: 6,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                    : null,
+        // ValueListenableBuilder rebuilds
+        // ONLY dot indicators not whole screen
+        ValueListenableBuilder<int>(
+          valueListenable: _featuredIndex,
+          builder: (_, index, __) => Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              featured.length,
+              (i) => AnimatedContainer(
+                duration: const Duration(
+                  milliseconds: 400,
+                ),
+                margin: const EdgeInsets.symmetric(
+                  horizontal: 3,
+                ),
+                width: index == i ? 24 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: index == i
+                      ? appthemecolor
+                      : secondaryColor.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(3),
+                  boxShadow: index == i
+                      ? [
+                          BoxShadow(
+                            color: appthemecolor.withValues(alpha: 0.5),
+                            blurRadius: 6,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
+                ),
               ),
             ),
           ),
@@ -410,11 +463,11 @@ class _HomescreenState extends State<Homescreen> {
     ).animate().fadeIn(duration: 500.ms);
   }
 
-  // Single reusable movie section
   Widget _buildMovieSection({
     required String title,
     required List<TmdbMovie> movies,
     required bool isLoading,
+    required String section,
     String? badgeText,
     Color? badgeColor,
     bool hideIfEmpty = false,
@@ -438,25 +491,23 @@ class _HomescreenState extends State<Homescreen> {
                   scrollDirection: Axis.horizontal,
                   padding: EdgeInsets.zero,
                   itemCount: movies.length,
-                  itemBuilder: (context, index) =>
-                      Padding(
+                  itemBuilder: (context, index) => Padding(
                     padding: EdgeInsets.only(
-                      left: index == 0
-                          ? R.horizontalPadding
-                          : 0,
-                      right: index ==
-                              movies.length - 1
-                          ? R.horizontalPadding
-                          : 12,
+                      left: index == 0 ? R.horizontalPadding : 0,
+                      right:
+                          index == movies.length - 1 ? R.horizontalPadding : 12,
                     ),
                     child: MovieCardWidget(
                       movie: movies[index],
                       index: index,
                       onTap: () => _navigateToDetails(
                         movies[index],
+                        section,
                       ),
                       badgeText: badgeText,
                       badgeColor: badgeColor,
+                      // BUG 29 fix: section in tag
+                      heroSection: section,
                     ),
                   ),
                 ),
@@ -465,26 +516,17 @@ class _HomescreenState extends State<Homescreen> {
     );
   }
 
-  // ═══════════════════════════════════
-  // INDIAN CINEMA SECTION
-  // Language tabs with colored accents
-  // Preloaded: Hi/Ta/Te
-  // Others: shimmer on first tap → cached
-  // ═══════════════════════════════════
   Widget _buildIndianCinemaSection(
     MovieProvider movieProvider,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section header with subtitle
         SectionHeader(
           title: 'Indian Cinema',
           subtitle: 'Select language',
           onSeeAll: null,
         ),
-
-        // Language tab bar
         SizedBox(
           height: 36,
           child: ListView.builder(
@@ -495,14 +537,11 @@ class _HomescreenState extends State<Homescreen> {
             itemCount: indianLanguages.length,
             itemBuilder: (context, index) {
               final lang = indianLanguages[index];
-              final isSelected =
-                  movieProvider.selectedLanguage ==
-                      lang;
+              final isSelected = movieProvider.selectedLanguage == lang;
               final color = languageColor(lang);
 
               return GestureDetector(
-                onTap: () =>
-                    movieProvider.selectLanguage(lang),
+                onTap: () => movieProvider.selectLanguage(lang),
                 child: AnimatedContainer(
                   duration: const Duration(
                     milliseconds: 300,
@@ -515,11 +554,8 @@ class _HomescreenState extends State<Homescreen> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: isSelected
-                        ? color
-                        : Colors.transparent,
-                    borderRadius:
-                        BorderRadius.circular(20),
+                    color: isSelected ? color : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isSelected
                           ? color
@@ -546,23 +582,16 @@ class _HomescreenState extends State<Homescreen> {
                       Text(
                         languageName(lang),
                         style: TextStyle(
-                          color: isSelected
-                              ? Colors.white
-                              : color,
+                          color: isSelected ? Colors.white : color,
                           fontSize: R.sp(11),
-                          fontWeight: isSelected
-                              ? FontWeight.w700
-                              : FontWeight.w500,
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
                         ),
                       ),
-                      // Show loader while tab loading
-                      if (movieProvider
-                          .isLanguageLoading(lang)) ...[
+                      if (movieProvider.isLanguageLoading(lang)) ...[
                         const Gap(6),
                         AppLoader.small(
-                          color: isSelected
-                              ? Colors.white
-                              : color,
+                          color: isSelected ? Colors.white : color,
                         ),
                       ],
                     ],
@@ -572,10 +601,7 @@ class _HomescreenState extends State<Homescreen> {
             },
           ),
         ),
-
         const Gap(12),
-
-        // Movies for selected language
         SizedBox(
           height: R.movieCardHeight + 60,
           child: movieProvider.isLanguageLoading(
@@ -593,13 +619,11 @@ class _HomescreenState extends State<Homescreen> {
                       padding: EdgeInsets.zero,
                       itemCount: movieProvider
                           .getLanguageMovies(
-                            movieProvider
-                                .selectedLanguage,
+                            movieProvider.selectedLanguage,
                           )
                           .length,
                       itemBuilder: (context, index) {
-                        final movies =
-                            movieProvider.getLanguageMovies(
+                        final movies = movieProvider.getLanguageMovies(
                           movieProvider.selectedLanguage,
                         );
                         final movie = movies[index];
@@ -608,28 +632,24 @@ class _HomescreenState extends State<Homescreen> {
                         );
                         return Padding(
                           padding: EdgeInsets.only(
-                            left: index == 0
-                                ? R.horizontalPadding
-                                : 0,
-                            right: index ==
-                                    movies.length - 1
+                            left: index == 0 ? R.horizontalPadding : 0,
+                            right: index == movies.length - 1
                                 ? R.horizontalPadding
                                 : 12,
                           ),
                           child: MovieCardWidget(
                             movie: movie,
                             index: index,
-                            onTap: () =>
-                                _navigateToDetails(
+                            onTap: () => _navigateToDetails(
                               movie,
+                              'indian',
                             ),
-                            // Language name as badge
-                            // with language accent color
                             badgeText: languageName(
-                              movieProvider
-                                  .selectedLanguage,
+                              movieProvider.selectedLanguage,
                             ),
                             badgeColor: color,
+                            heroSection: 'indian_'
+                                '$index',
                           ),
                         );
                       },
@@ -661,7 +681,7 @@ class _HomescreenState extends State<Homescreen> {
   }
 }
 
-// Extracted featured card widget
+// Featured card
 class _FeaturedCard extends StatelessWidget {
   final TmdbMovie movie;
   final TmdbService tmdbService;
@@ -676,10 +696,11 @@ class _FeaturedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     R.init(context);
+    // BUG 29 fix: featured Hero tag is unique
     return GestureDetector(
       onTap: onTap,
       child: Hero(
-        tag: 'movie_${movie.id}',
+        tag: 'movie_${movie.id}_featured',
         child: Container(
           margin: const EdgeInsets.symmetric(
             horizontal: 4,
@@ -692,8 +713,7 @@ class _FeaturedCard extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color:
-                    appthemecolor.withValues(alpha: 0.3),
+                color: appthemecolor.withValues(alpha: 0.3),
                 blurRadius: 20,
                 spreadRadius: 2,
               ),
@@ -709,10 +729,8 @@ class _FeaturedCard extends StatelessWidget {
                     movie.backdropPath,
                   ),
                   fit: BoxFit.cover,
-                  placeholder: (_, __) => ShimmerBox(
-                    width: double.infinity,
-                    height: double.infinity,
-                    borderRadius: 16,
+                  placeholder: (_, __) => Container(
+                    color: surfaceColor,
                   ),
                   errorWidget: (_, __, ___) => Container(
                     color: surfaceColor,
@@ -730,10 +748,10 @@ class _FeaturedCard extends StatelessWidget {
                     gradient: heroGradient,
                   ),
                 ),
-                // Language badge for Indian movies
-                if (isIndianMovie(
-                  {'original_language': movie.originalLanguage},
-                ))
+                // Language badge
+                if (isIndianMovie({
+                  'original_language': movie.originalLanguage,
+                }))
                   Positioned(
                     top: 12,
                     left: 12,
@@ -754,8 +772,7 @@ class _FeaturedCard extends StatelessWidget {
                   child: AppBadge(
                     label: movie.formattedRating,
                     icon: Icons.star_rounded,
-                    color: surfaceColor
-                        .withValues(alpha: 0.8),
+                    color: Colors.black.withValues(alpha: 0.6),
                     hasGlow: false,
                   ),
                 ),
@@ -764,91 +781,51 @@ class _FeaturedCard extends StatelessWidget {
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.6),
+                        ],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
+                    padding: const EdgeInsets.fromLTRB(
+                      12,
+                      20,
+                      12,
+                      12,
+                    ),
+                    child: Row(
                       children: [
-                        Text(
-                          movie.title,
-                          style: TextStyle(
-                            color: primaryColor,
-                            fontSize: R.sp(16),
-                            fontWeight: FontWeight.w700,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const Gap(6),
-                        Row(
-                          children: [
-                            ...movie.genreNames
-                                .take(2)
-                                .map(
-                                  (genre) => Container(
-                                    margin:
-                                        const EdgeInsets
-                                            .only(right: 6),
-                                    padding:
-                                        const EdgeInsets
-                                            .symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration:
-                                        BoxDecoration(
-                                      color: appthemecolor
-                                          .withValues(
-                                              alpha: 0.15),
-                                      borderRadius:
-                                          BorderRadius
-                                              .circular(20),
-                                      border: Border.all(
-                                        color: appthemecolor
-                                            .withValues(
-                                                alpha: 0.4),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      genre,
-                                      style: TextStyle(
-                                        color: appthemecolor,
-                                        fontSize: R.sp(9),
-                                      ),
-                                    ),
-                                  ),
+                        ...movie.genreNames.take(2).map(
+                              (genre) => Container(
+                                margin: const EdgeInsets.only(
+                                  right: 6,
                                 ),
-                            const Spacer(),
-                            GestureDetector(
-                              onTap: onTap,
-                              child: Container(
-                                padding:
-                                    const EdgeInsets
-                                        .symmetric(
-                                  horizontal: 12,
-                                  vertical: 5,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: appthemecolor,
-                                  borderRadius:
-                                      BorderRadius
-                                          .circular(8),
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.3),
+                                  ),
                                 ),
                                 child: Text(
-                                  'Book Now',
+                                  genre,
                                   style: TextStyle(
-                                    color:
-                                        mobileBackgroundColor,
-                                    fontSize: R.sp(10),
-                                    fontWeight:
-                                        FontWeight.w700,
+                                    color: Colors.white,
+                                    fontSize: R.sp(9),
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
                             ),
-                          ],
-                        ),
                       ],
                     ),
                   ),

@@ -22,54 +22,110 @@ class WatchlistScreen extends StatefulWidget {
   const WatchlistScreen({super.key});
 
   @override
-  State<WatchlistScreen> createState() => _WatchlistScreenState();
+  State<WatchlistScreen> createState() =>
+      _WatchlistScreenState();
 }
 
-class _WatchlistScreenState extends State<WatchlistScreen> {
-  final WatchlistService _watchlistService = WatchlistService();
+class _WatchlistScreenState
+    extends State<WatchlistScreen> {
+  final WatchlistService _watchlistService =
+      WatchlistService();
   final TmdbService _tmdbService = TmdbService();
 
-  //  ConfirmDialog.show() instead of
-  // duplicate dialog code x3
-  Future<void> _confirmClearAll() async {
-    final confirmed = await ConfirmDialog.show(
-      context,
-      title: 'Clear Watchlist',
-      message: 'Remove all movies from your watchlist?',
-      confirmText: 'Clear All', // ← was confirmLabel
-      cancelText: 'Cancel', // ← was cancelLabel
-      confirmColor: errorColor,
-      icon: Icons.delete_sweep_rounded,
-      onConfirm: () {}, // ← ADD this
-    );
-    if (confirmed==true && mounted) {
-      await _watchlistService.clearWatchlist();
-      //  AppSnackbar instead of ScaffoldMessenger
+  // BUG 49 fix: local state + get()
+  // instead of stream listener
+  List<TmdbMovie> _movies = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWatchlist();
+  }
+
+  Future<void> _loadWatchlist() async {
+    setState(() => _isLoading = true);
+    try {
+      final movies =
+          await _watchlistService.getWatchlistOnce();
       if (mounted) {
-        AppSnackbar.success(
-          context,
-          'Watchlist cleared',
-        );
+        setState(() {
+          _movies = movies;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     }
   }
 
-  Future<void> _confirmRemoveSingle(
+  Future<void> _confirmClearAll() async {
+    await ConfirmDialog.show(
+      context,
+      title: 'Clear Watchlist',
+      message:
+          'Remove all movies from your watchlist?',
+      confirmText: 'Clear All',
+      confirmColor: errorColor,
+      icon: Icons.delete_sweep_rounded,
+      iconColor: errorColor,
+      onConfirm: () async {
+        await _watchlistService.clearWatchlist();
+        await _loadWatchlist();
+        if (mounted) {
+          AppSnackbar.success(
+            context,
+            'Watchlist cleared',
+          );
+        }
+      },
+    );
+  }
+
+  Future<void> _removeSingle(
     TmdbMovie movie,
   ) async {
-    final confirmed = await ConfirmDialog.show(
+    await ConfirmDialog.show(
       context,
       title: 'Remove from Watchlist',
-      message: 'Remove "${movie.title}" from your watchlist?',
-      confirmText: 'Remove', // ← was confirmLabel
-      cancelText: 'Cancel', // ← was cancelLabel
+      message:
+          'Remove "${movie.title}" from your watchlist?',
+      confirmText: 'Remove',
       confirmColor: errorColor,
       icon: Icons.bookmark_remove_rounded,
-      onConfirm: () {}, // ← ADD this
+      iconColor: errorColor,
+      onConfirm: () async {
+        await _watchlistService.removeFromWatchlist(
+          movie.id,
+        );
+        await _loadWatchlist();
+      },
     );
-    if (confirmed==true && mounted) {
-      await _watchlistService.removeFromWatchlist(movie.id);
-    }
+  }
+
+  Future<bool> _confirmSwipeDismiss(
+    TmdbMovie movie,
+  ) async {
+    bool confirmed = false;
+    await ConfirmDialog.show(
+      context,
+      title: 'Remove from Watchlist',
+      message: 'Remove "${movie.title}"?',
+      confirmText: 'Remove',
+      confirmColor: errorColor,
+      icon: Icons.bookmark_remove_rounded,
+      iconColor: errorColor,
+      onConfirm: () async {
+        confirmed = true;
+        await _watchlistService.removeFromWatchlist(
+          movie.id,
+        );
+        await _loadWatchlist();
+      },
+    );
+    return confirmed;
   }
 
   @override
@@ -77,7 +133,6 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
     R.init(context);
     return Scaffold(
       backgroundColor: mobileBackgroundColor,
-      //  AppAppBar instead of custom AppBar
       appBar: AppAppBar(
         title: 'My Watchlist',
         actions: [
@@ -90,7 +145,8 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
                 color: surfaceColor,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: errorColor.withValues(alpha: 0.3),
+                  color: errorColor
+                      .withValues(alpha: 0.3),
                 ),
               ),
               child: const Icon(
@@ -102,86 +158,80 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
           ),
         ],
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: R.maxWidth),
-          child: StreamBuilder<List<TmdbMovie>>(
-            stream: _watchlistService.getWatchlistStream(),
-            builder: (context, snapshot) {
-              // ✅ ShimmerBox instead of CPI
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return _buildShimmer();
-              }
-
-              final movies = snapshot.data ?? [];
-
-              // ✅ EmptyState instead of custom empty
-              if (movies.isEmpty) {
-                return EmptyState(
-                  icon: Icons.bookmark_border_rounded,
-                  title: 'No movies saved',
-                  subtitle:
-                      'Tap the bookmark icon on any\nmovie to save it here',
-                );
-              }
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ✅ SectionHeader instead of
-                  // custom row with Container bar
-                  SectionHeader(
-                    title:
-                        '${movies.length} movie${movies.length > 1 ? 's' : ''} saved',
-                    subtitle: 'Swipe left to remove',
-                  ),
-                  Expanded(
-                    child: ListView.builder(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: R.horizontalPadding,
-                        vertical: 4,
-                      ),
-                      itemCount: movies.length,
-                      itemBuilder: (context, index) {
-                        final movie = movies[index];
-                        return _WatchlistItem(
-                          movie: movie,
-                          tmdbService: _tmdbService,
-                          onTap: () => Navigator.push(
-                            context,
-                            AppRoutes.scaleRoute(
-                              MovieDetailsScreen(
-                                movie: movie,
+      body: RefreshIndicator(
+        color: appthemecolor,
+        backgroundColor: surfaceColor,
+        onRefresh: _loadWatchlist,
+        child: Center(
+          child: ConstrainedBox(
+            constraints:
+                BoxConstraints(maxWidth: R.maxWidth),
+            child: _isLoading
+                ? _buildShimmer()
+                : _movies.isEmpty
+                    ? const EmptyState(
+                        icon: Icons
+                            .bookmark_border_rounded,
+                        title: 'No movies saved',
+                        subtitle:
+                            'Tap the bookmark icon on any movie to save it here',
+                      )
+                    : Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                        children: [
+                          SectionHeader(
+                            title:
+                                '${_movies.length} movie${_movies.length > 1 ? 's' : ''} saved',
+                            subtitle:
+                                'Swipe left to remove',
+                          ),
+                          Expanded(
+                            child: ListView.builder(
+                              padding:
+                                  EdgeInsets.symmetric(
+                                horizontal:
+                                    R.horizontalPadding,
+                                vertical: 4,
                               ),
+                              itemCount: _movies.length,
+                              itemBuilder:
+                                  (context, index) {
+                                final movie =
+                                    _movies[index];
+                                return _WatchlistItem(
+                                  movie: movie,
+                                  tmdbService:
+                                      _tmdbService,
+                                  onTap: () =>
+                                      Navigator.push(
+                                    context,
+                                    AppRoutes.scaleRoute(
+                                      MovieDetailsScreen(
+                                        movie: movie,
+                                      ),
+                                    ),
+                                  ),
+                                  onRemove: () =>
+                                      _removeSingle(
+                                    movie,
+                                  ),
+                                  onDismissed: () =>
+                                      _watchlistService
+                                          .removeFromWatchlist(
+                                    movie.id,
+                                  ),
+                                  onConfirmDismiss: () =>
+                                      _confirmSwipeDismiss(
+                                    movie,
+                                  ),
+                                  index: index,
+                                );
+                              },
                             ),
                           ),
-                          onRemove: () => _confirmRemoveSingle(
-                            movie,
-                          ),
-                          onDismissed: () =>
-                              _watchlistService.removeFromWatchlist(
-                            movie.id,
-                          ),
-                          onConfirmDismiss: () async {
-                            return await ConfirmDialog.show(
-                                  context,
-                                  title: 'Remove from Watchlist',
-                                  message: 'Remove "${movie.title}"?',
-                                  confirmText: 'Remove', // ← was confirmLabel
-                                  confirmColor: errorColor,
-                                  icon: Icons.bookmark_remove_rounded,
-                                  onConfirm: () {}, // ← ADD this
-                                ) ??
-                                false;
-                          },
-                          index: index,
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              );
-            },
+                        ],
+                      ),
           ),
         ),
       ),
@@ -205,10 +255,6 @@ class _WatchlistScreenState extends State<WatchlistScreen> {
   }
 }
 
-// ═══════════════════════════════════
-// Extracted watchlist item widget
-// Keeps build() method clean
-// ═══════════════════════════════════
 class _WatchlistItem extends StatelessWidget {
   final TmdbMovie movie;
   final TmdbService tmdbService;
@@ -236,7 +282,6 @@ class _WatchlistItem extends StatelessWidget {
       direction: DismissDirection.endToStart,
       confirmDismiss: (_) => onConfirmDismiss(),
       onDismissed: (_) => onDismissed(),
-      // Swipe background
       background: Container(
         margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(
@@ -268,7 +313,6 @@ class _WatchlistItem extends StatelessWidget {
           ],
         ),
       ),
-      // AppCard instead of GestureDetector+Container
       child: AppCard(
         onTap: onTap,
         borderRadius: 20,
@@ -276,7 +320,6 @@ class _WatchlistItem extends StatelessWidget {
         padding: EdgeInsets.zero,
         child: Row(
           children: [
-            // Poster with shimmer placeholder
             ClipRRect(
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(20),
@@ -289,7 +332,6 @@ class _WatchlistItem extends StatelessWidget {
                 width: R.isPhone ? 90 : 110,
                 height: R.isPhone ? 130 : 150,
                 fit: BoxFit.cover,
-                // ✅ ShimmerBox placeholder
                 placeholder: (_, __) => ShimmerBox(
                   width: R.isPhone ? 90 : 110,
                   height: R.isPhone ? 130 : 150,
@@ -309,14 +351,14 @@ class _WatchlistItem extends StatelessWidget {
 
             const Gap(14),
 
-            // Movie info
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   vertical: 14,
                 ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
                     Text(
                       movie.title,
@@ -331,12 +373,12 @@ class _WatchlistItem extends StatelessWidget {
                     const Gap(8),
                     Row(
                       children: [
-                        // AppBadge instead of
-                        // custom rating Container
                         AppBadge(
                           label: movie.formattedRating,
                           icon: Icons.star_rounded,
-                          color: appthemecolor.withValues(alpha: 0.15),
+                          color: appthemecolor
+                              .withValues(alpha: 0.15),
+                          textColor: appthemecolor,
                           hasGlow: false,
                         ),
                         const Gap(8),
@@ -357,24 +399,12 @@ class _WatchlistItem extends StatelessWidget {
                         children: movie.genreNames
                             .take(2)
                             .map(
-                              (g) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: surfaceColor2,
-                                  borderRadius: BorderRadius.circular(
-                                    20,
-                                  ),
-                                ),
-                                child: Text(
-                                  g,
-                                  style: TextStyle(
-                                    color: secondaryColor,
-                                    fontSize: R.sp(10),
-                                  ),
-                                ),
+                              (g) => AppBadge(
+                                label: g,
+                                color: surfaceColor2,
+                                textColor:
+                                    secondaryColor,
+                                hasGlow: false,
                               ),
                             )
                             .toList(),
@@ -384,17 +414,20 @@ class _WatchlistItem extends StatelessWidget {
               ),
             ),
 
-            // Remove button
             GestureDetector(
               onTap: onRemove,
               child: Container(
-                margin: const EdgeInsets.only(right: 14),
+                margin: const EdgeInsets.only(
+                  right: 14,
+                ),
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: errorColor.withValues(alpha: 0.08),
+                  color: errorColor
+                      .withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: errorColor.withValues(alpha: 0.3),
+                    color: errorColor
+                        .withValues(alpha: 0.3),
                   ),
                 ),
                 child: const Icon(
@@ -407,7 +440,9 @@ class _WatchlistItem extends StatelessWidget {
           ],
         ),
       ).animate().fadeIn(
-            delay: Duration(milliseconds: index * 60),
+            delay: Duration(
+              milliseconds: index * 60,
+            ),
           ),
     );
   }

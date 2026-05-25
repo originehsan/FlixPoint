@@ -578,41 +578,39 @@ class _CarouselCard extends StatelessWidget {
           horizontal: 4,
         ),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color:
-                appthemecolor.withValues(alpha: 0.3),
+            color: appthemecolor
+                .withValues(alpha: 0.4),
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
               color: appthemecolor
-                  .withValues(alpha: 0.1),
-              blurRadius: 16,
-              spreadRadius: 1,
+                  .withValues(alpha: 0.2),
+              blurRadius: 20,
+              spreadRadius: 2,
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
           child: Stack(
             fit: StackFit.expand,
             children: [
-              // Clean image — zero text on it
+              // Full image — dominant
               article.imageUrl != null
                   ? CachedNetworkImage(
                       imageUrl: article.imageUrl!,
                       fit: BoxFit.cover,
-                      // ShimmerBox replaces
-                      // Container placeholder
                       placeholder: (_, __) =>
                           const ShimmerBox(
                         width: double.infinity,
                         height: double.infinity,
-                        borderRadius: 20,
+                        borderRadius: 24,
                       ),
-                      errorWidget: (_, __, ___) =>
-                          Container(
+                      errorWidget:
+                          (_, __, ___) => Container(
                         color: surfaceColor,
                         child: const Center(
                           child: Icon(
@@ -634,16 +632,219 @@ class _CarouselCard extends StatelessWidget {
                       ),
                     ),
 
-              // Source badge top left ONLY
-              // AppBadge replaces custom Container
+              // Subtle top vignette
+              // Keeps source badge readable
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black
+                            .withValues(alpha: 0.5),
+                        Colors.transparent,
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Strong bottom gradient
+              // Title sits here
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  height: 140,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        Colors.black
+                            .withValues(alpha: 0.5),
+                        Colors.black
+                            .withValues(alpha: 0.92),
+                      ],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      stops: const [0.0, 0.5, 1.0],
+                    ),
+                  ),
+                ),
+              ),
+
+              // Source badge — top left
               Positioned(
                 top: 12,
                 left: 12,
-                child: AppBadge(
-                  label: article.sourceName,
-                  color: Colors.black
-                      .withValues(alpha: 0.65),
-                  hasGlow: false,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: appthemecolor,
+                    borderRadius:
+                        BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: appthemecolor
+                            .withValues(alpha: 0.5),
+                        blurRadius: 8,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    article.sourceName
+                        .toUpperCase(),
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: R.sp(8),
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Bottom content
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    14,
+                    0,
+                    14,
+                    14,
+                  ),
+                  child: Column(
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Headline
+                      Text(
+                        article.title,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: R.sp(14),
+                          fontWeight: FontWeight.w800,
+                          height: 1.3,
+                          shadows: const [
+                            Shadow(
+                              color: Colors.black,
+                              blurRadius: 12,
+                            ),
+                          ],
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const Gap(8),
+                      // Meta row
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.access_time_rounded,
+                            color: appthemecolor,
+                            size: 11,
+                          ),
+                          const Gap(4),
+                          Text(
+                            article.timeAgo,
+                            style: TextStyle(
+                              color: appthemecolor,
+                              fontSize: R.sp(10),
+                              fontWeight:
+                                  FontWeight.w600,
+                            ),
+                          ),
+                          const Gap(8),
+                          Container(
+                            width: 3,
+                            height: 3,
+                            decoration:
+                                const BoxDecoration(
+                              color: Colors.white38,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const Gap(8),
+                          Text(
+                            article.readingTime,
+                            style: TextStyle(
+                              color: Colors.white60,
+                              fontSize: R.sp(10),
+                            ),
+                          ),
+                          const Spacer(),
+                          // Read Now pill
+                          Container(
+                            padding:
+                                const EdgeInsets
+                                    .symmetric(
+                              horizontal: 12,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient:
+                                  const LinearGradient(
+                                colors: [
+                                  appthemecolor,
+                                  goldDark,
+                                ],
+                              ),
+                              borderRadius:
+                                  BorderRadius
+                                      .circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: appthemecolor
+                                      .withValues(
+                                          alpha: 0.4),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize:
+                                  MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Read',
+                                  style: TextStyle(
+                                    color:
+                                        Colors.black,
+                                    fontSize: R.sp(10),
+                                    fontWeight:
+                                        FontWeight.w800,
+                                  ),
+                                ),
+                                const Gap(4),
+                                const Icon(
+                                  Icons
+                                      .arrow_forward_rounded,
+                                  color: Colors.black,
+                                  size: 10,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],

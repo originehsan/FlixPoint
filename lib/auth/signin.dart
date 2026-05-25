@@ -7,8 +7,9 @@ import 'package:movieticket/provider/user_provider.dart';
 import 'package:movieticket/utils/color.dart';
 import 'package:movieticket/utils/navbar.dart';
 import 'package:movieticket/utils/page_transitions.dart';
-import 'package:movieticket/utils/pickimage.dart';
 import 'package:movieticket/utils/responsive.dart';
+import 'package:movieticket/widgets/common/app_button.dart';
+import 'package:movieticket/widgets/common/snackbars/app_snackbar.dart';
 import 'package:movieticket/widgets/flixpoint_logo.dart';
 import 'package:movieticket/widgets/text_field.dart';
 import 'package:provider/provider.dart';
@@ -22,8 +23,8 @@ class LoginIn extends StatefulWidget {
 
 class _LoginInState extends State<LoginIn> {
   bool _isLoading = false;
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   @override
   void dispose() {
@@ -33,8 +34,12 @@ class _LoginInState extends State<LoginIn> {
   }
 
   Future<void> _loginUser() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      showSnackBar('Please fill all fields', context);
+    if (_emailController.text.isEmpty ||
+        _passwordController.text.isEmpty) {
+      AppSnackbar.warning(
+        context,
+        'Please fill all fields',
+      );
       return;
     }
 
@@ -53,20 +58,31 @@ class _LoginInState extends State<LoginIn> {
         listen: false,
       );
 
-      // Use UID not email
-      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-      await userProvider.setUser(uid);
+      // BUG 4 fix: guard empty uid
+      final uid =
+          FirebaseAuth.instance.currentUser?.uid ?? '';
+      if (uid.isEmpty) {
+        setState(() => _isLoading = false);
+        AppSnackbar.error(
+          context,
+          'Login failed. Please try again.',
+        );
+        return;
+      }
 
+      await userProvider.setUser(uid);
       if (!mounted) return;
 
       setState(() => _isLoading = false);
-
       Navigator.of(context).pushReplacement(
-        AppRoutes.homeEntryRoute(Navbar(name: userProvider.name)),
+        AppRoutes.homeEntryRoute(
+          Navbar(name: userProvider.name),
+        ),
       );
     } else {
       setState(() => _isLoading = false);
-      showSnackBar(res, context);
+      // AppSnackbar replaces showSnackBar
+      AppSnackbar.error(context, res);
     }
   }
 
@@ -82,7 +98,8 @@ class _LoginInState extends State<LoginIn> {
       ),
       body: Center(
         child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: R.maxWidth),
+          constraints:
+              BoxConstraints(maxWidth: R.maxWidth),
           child: SingleChildScrollView(
             padding: EdgeInsets.symmetric(
               horizontal: R.horizontalPadding,
@@ -91,7 +108,6 @@ class _LoginInState extends State<LoginIn> {
               children: [
                 Gap(R.hp(6)),
 
-                // FlixPoint animated logo
                 const FlixPointLogo(
                   animate: true,
                   fontSize: 36,
@@ -101,41 +117,55 @@ class _LoginInState extends State<LoginIn> {
 
                 Gap(R.px(48)),
 
-                // Email field
                 TextFieldInput(
-                  textEditingController: _emailController,
+                  textEditingController:
+                      _emailController,
                   hintText: 'Enter your email',
-                  textInputType: TextInputType.emailAddress,
+                  textInputType:
+                      TextInputType.emailAddress,
                   prefixIcon: Icons.email_outlined,
-                  autofillHints: const [AutofillHints.email],
+                  autofillHints: const [
+                    AutofillHints.email,
+                  ],
                 ),
 
                 Gap(R.px(16)),
 
-                // Password field
                 TextFieldInput(
-                  textEditingController: _passwordController,
+                  textEditingController:
+                      _passwordController,
                   hintText: 'Enter your password',
                   textInputType: TextInputType.text,
                   isPass: true,
-                  prefixIcon: Icons.lock_outline_rounded,
-                  autofillHints: const [AutofillHints.password],
+                  prefixIcon:
+                      Icons.lock_outline_rounded,
+                  autofillHints: const [
+                    AutofillHints.password,
+                  ],
                 ),
 
                 Gap(R.px(32)),
 
-                // Sign in button
+                // TweenAnimationBuilder kept
+                // for pulsing glow effect
+                // AppButton inside replaces
+                // GestureDetector+Container
                 TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0.3, end: 1.0),
-                  duration: const Duration(seconds: 2),
+                  duration:
+                      const Duration(seconds: 2),
                   curve: Curves.easeInOut,
                   builder: (context, value, child) {
                     return Container(
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
+                        borderRadius:
+                            BorderRadius.circular(30),
                         boxShadow: [
                           BoxShadow(
-                            color: appthemecolor.withValues(alpha: 0.3 * value),
+                            color: appthemecolor
+                                .withValues(
+                              alpha: 0.3 * value,
+                            ),
                             blurRadius: 20 * value,
                             spreadRadius: 2 * value,
                           ),
@@ -144,43 +174,22 @@ class _LoginInState extends State<LoginIn> {
                       child: child,
                     );
                   },
-                  child: GestureDetector(
-                    onTap: _isLoading ? null : _loginUser,
-                    child: Container(
-                      height: 56,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [appthemecolor, goldDark],
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                        ),
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      alignment: Alignment.center,
-                      child: _isLoading
-                          ? const CircularProgressIndicator(
-                              color: Colors.black,
-                              strokeWidth: 2,
-                            )
-                          : Text(
-                              'Sign In',
-                              style: TextStyle(
-                                color: Colors.black,
-                                fontSize: R.sp(16),
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                    ),
+                  child: AppButton(
+                    label: 'Sign In',
+                    height: 56,
+                    // AppLoader.small replaces CPI
+                    isLoading: _isLoading,
+                    onTap: _isLoading
+                        ? null
+                        : _loginUser,
                   ),
                 ),
 
                 Gap(R.px(24)),
 
-                // Create account link
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment:
+                      MainAxisAlignment.center,
                   children: [
                     Text(
                       "Don't have an account? ",
@@ -190,9 +199,12 @@ class _LoginInState extends State<LoginIn> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => Navigator.pushReplacement(
+                      onTap: () =>
+                          Navigator.pushReplacement(
                         context,
-                        AppRoutes.authRoute(const SignUp()),
+                        AppRoutes.authRoute(
+                          const SignUp(),
+                        ),
                       ),
                       child: Text(
                         'Sign Up',
