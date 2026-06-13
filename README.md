@@ -22,6 +22,21 @@ FlixPoint is an Android movie ticket booking app built with Flutter for discover
 
 ---
 
+---
+
+## Screenshots
+
+| Screen | Preview |
+|---|---|
+| Home |screenshots/Home.png|
+| Movie Details | screenshots/MovieDetail.png |
+| Seat Selection | screenshots/SeatSelection.png |
+| Payment | screenshots/Payment.png |
+| Ticket | screenshots/Ticket.png|
+| Booking History | screenshots/BookingHistory.png |
+
+---
+
 ## Features
 
 ### Discovery
@@ -125,20 +140,6 @@ Add `google-services.json` to `android/app/` from your Firebase console.
 flutter run
 ```
 
----
-
-## Screenshots
-
-| Screen | Preview |
-|---|---|
-| Home | _Add screenshot_ |
-| Movie Details | _Add screenshot_ |
-| Seat Selection | _Add screenshot_ |
-| Payment | _Add screenshot_ |
-| Ticket | _Add screenshot_ |
-| Booking History | _Add screenshot_ |
-
----
 
 ## Architecture & Key Decisions
 
