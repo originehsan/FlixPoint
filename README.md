@@ -6,11 +6,12 @@ A full-stack Android movie ticket booking app built with Flutter and Firebase â€
 
 ## Table of Contents
 - [About](#about)
+- [Screenshots](#screenshots)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
-- [Screenshots](#screenshots)
+
 - [Architecture & Key Decisions](#architecture--key-decisions)
 - [Developer](#developer)
 - [License](#license)
@@ -22,18 +23,33 @@ FlixPoint is an Android movie ticket booking app built with Flutter for discover
 
 ---
 
+
 ---
 
 ## Screenshots
 
-| Screen | Preview |
-|---|---|
-| Home |screenshots/Home.png|
-| Movie Details | screenshots/MovieDetail.png |
-| Seat Selection | screenshots/SeatSelection.png |
-| Payment | screenshots/Payment.png |
-| Ticket | screenshots/Ticket.png|
-| Booking History | screenshots/BookingHistory.png |
+<table>
+  <tr>
+    <td align="center"><b>Home</b></td>
+    <td align="center"><b>Movie Details</b></td>
+    <td align="center"><b>Seat Selection</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/Home.png" width="220"/></td>
+    <td><img src="screenshots/MovieDetail.png" width="220"/></td>
+    <td><img src="screenshots/SeatSelection.png" width="220"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Payment</b></td>
+    <td align="center"><b>Ticket </b></td>
+    <td align="center"><b>Booking History</b></td>
+  </tr>
+  <tr>
+    <td><img src="screenshots/Payment.png" width="220"/></td>
+    <td><img src="screenshots/Ticket.png" width="220"/></td>
+    <td><img src="screenshots/BookingHistory.png" width="220"/></td>
+  </tr>
+</table>
 
 ---
 
