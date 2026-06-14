@@ -99,5 +99,4 @@ ios/Runner/GoogleService-Info.plist
 
 
 # files  for  secrets
-context.md
 .env
